@@ -5,7 +5,114 @@ local API_KEY  = "sgid_08168ec5efd4de42468154fadb9e9a9f38ebff76"
 
 function Core.AddSongsTab(Window, WindUI)
     local SongsTab = Window:Tab({ Title = "เพลง", Icon = "music" })
+    local Players = game:GetService("Players")
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local LocalPlayer = Players.LocalPlayer
 
+    -- ===== ระบบเสกลำโพง + เปิดเพลง =====
+    SongsTab:Section({ Title = "เครื่องเล่นเพลง", Desc = "หยิบลำโพงและเปิดเพลงด้วย ID" })
+
+    local function IsHoldingBoombox()
+        local char = LocalPlayer.Character
+        if not char then return false end
+        for _, v in pairs(char:GetChildren()) do
+            if v:IsA("Tool") and v.Name:lower():find("boom") then
+                return true
+            end
+        end
+        return false
+    end
+
+    local function EquipBoombox()
+        if IsHoldingBoombox() then return true end
+        local ok = pcall(function()
+            local Rep = ReplicatedStorage
+            local toolRemote = Rep:WaitForChild("RE"):WaitForChild("1Too1l")
+            toolRemote:InvokeServer("PickingTools", "Boombox")
+        end)
+        task.wait(0.5)
+        return ok
+    end
+
+    SongsTab:Button({
+        Title = "เสกลำโพง",
+        Icon = "speaker",
+        Callback = function()
+            if IsHoldingBoombox() then
+                WindUI:Notify({ Title = "เพลง", Content = "ถือลำโพงอยู่แล้ว", Duration = 2 })
+                return
+            end
+
+            local ok = EquipBoombox()
+            if ok then
+                WindUI:Notify({ Title = "สำเร็จ", Content = "หยิบลำโพงแล้ว", Duration = 2 })
+            else
+                WindUI:Notify({ Title = "ผิดพลาด", Content = "หยิบลำโพงไม่สำเร็จ", Duration = 3 })
+            end
+        end,
+    })
+
+    local currentId = ""
+
+    local function PlayMusic(id)
+        id = tostring(id):gsub("%D", "")
+        if id == "" then return false end
+
+        EquipBoombox()
+
+        local ok = pcall(function()
+            local Rep = ReplicatedStorage
+            local playRemote = Rep:WaitForChild("RE"):WaitForChild("PlayerToolEvent")
+            playRemote:FireServer("ToolMusicText", id, nil, true)
+        end)
+
+        return ok
+    end
+
+    local function StopMusic()
+        pcall(function()
+            local Rep = ReplicatedStorage
+            local playRemote = Rep:WaitForChild("RE"):WaitForChild("PlayerToolEvent")
+            playRemote:FireServer("ToolMusicText", "", nil, true)
+        end)
+    end
+
+    SongsTab:Input({
+        Title = "เปิดเพลงด้วย ID",
+        Placeholder = "ใส่ Audio ID เช่น 1234567890",
+        Callback = function(text)
+            currentId = text:gsub("%D", "")
+        end,
+    })
+
+    SongsTab:Button({
+        Title = "เล่นเพลง",
+        Icon = "play",
+        Callback = function()
+            if currentId == "" then
+                WindUI:Notify({ Title = "ผิดพลาด", Content = "กรุณาใส่ Audio ID ก่อน", Duration = 3 })
+                return
+            end
+
+            local ok = PlayMusic(currentId)
+            if ok then
+                WindUI:Notify({ Title = "กำลังเล่น", Content = "ID: " .. currentId, Duration = 2 })
+            else
+                WindUI:Notify({ Title = "ผิดพลาด", Content = "เล่นเพลงไม่สำเร็จ", Duration = 3 })
+            end
+        end,
+    })
+
+    SongsTab:Button({
+        Title = "หยุดเพลง",
+        Icon = "square",
+        Callback = function()
+            StopMusic()
+            WindUI:Notify({ Title = "หยุดแล้ว", Content = "หยุดเล่นเพลง", Duration = 2 })
+        end,
+    })
+
+    -- ===== ค้นหาเพลงจาก API =====
     SongsTab:Section({ Title = "ค้นหาเพลง", Desc = "ดึงข้อมูลจาก API สาธารณะ" })
 
     local AllSongs = {}
