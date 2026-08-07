@@ -1,12 +1,13 @@
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
 local Core = {}
+local HUB_VERSION = "v1.0"
 
 function Core.Init(mapName)
     local Window = WindUI:CreateWindow({
         Title = "RVX hub X " .. mapName,
-        Icon = "rocket",
-        Theme = "Emerald",
+        Icon = "rbxassetid://125616092701976",
+        Theme = "Violet",
     })
 
     local Players = game:GetService("Players")
@@ -16,8 +17,7 @@ function Core.Init(mapName)
 
     local ProfileSection = HomeTab:Section({ Title = "โปรไฟล์ผู้เล่น", Desc = mapName })
 
-    -- ดึงรูปโปรไฟล์ตัวละคร (แบบ 3D headshot)
-    local content, isReady = Players:GetUserThumbnailAsync(
+    local content = Players:GetUserThumbnailAsync(
         LocalPlayer.UserId,
         Enum.ThumbnailType.HeadShot,
         Enum.ThumbnailSize.Size420x420
@@ -34,6 +34,18 @@ function Core.Init(mapName)
     HomeTab:Paragraph({
         Title = LocalPlayer.DisplayName,
         Desc = "@" .. LocalPlayer.Name .. "  |  UserId: " .. LocalPlayer.UserId,
+    })
+
+    HomeTab:Button({
+        Title = "เวอร์ชั่น " .. HUB_VERSION,
+        Icon = "star",
+        Callback = function()
+            WindUI:Notify({
+                Title = "RVX Hub",
+                Content = "เวอร์ชั่นปัจจุบัน: " .. HUB_VERSION,
+                Duration = 3,
+            })
+        end,
     })
 
     HomeTab:Button({
@@ -62,6 +74,7 @@ function Core.Settings(Window, WindUI)
     SettingsTab:Dropdown({
         Title = "ธีม",
         Values = { "Dark", "Light", "Emerald", "Plant", "Midnight", "Violet", "Rose", "MonokaiPro" },
+        Value = "Violet",
         Callback = function(selected)
             WindUI:SetTheme(selected)
         end,
