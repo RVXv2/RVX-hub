@@ -59,5 +59,112 @@ TeleportTab:Button({
     end,
 })
 
+-- ===== แท็บการป้องกัน =====
+local ProtectionTab = Window:Tab({ Title = "การป้องกัน", Icon = "shield" })
+
+ProtectionTab:Section({ Title = "ป้องกันตัวละคร", Desc = "เลือกเปิดได้อิสระทีละอัน" })
+
+local AntiSitAll = false
+local AntiSitChair = false
+local AntiSitVehicle = false
+local AntiKnockback = false
+local AntiRagdoll = false
+
+local function GetHumanoid()
+    local char = LocalPlayer.Character
+    return char and char:FindFirstChildOfClass("Humanoid")
+end
+
+local function ApplyRagdollStates()
+    local hum = GetHumanoid()
+    if not hum then return end
+    hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, not AntiRagdoll)
+    hum:SetStateEnabled(Enum.HumanoidStateType.Physics, not AntiKnockback)
+    hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, not AntiKnockback)
+end
+
+local function ApplySitAllState()
+    local hum = GetHumanoid()
+    if not hum then return end
+    hum:SetStateEnabled(Enum.HumanoidStateType.Seated, not AntiSitAll)
+end
+
+local function HookCharacter(char)
+    task.wait(1)
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+
+    ApplyRagdollStates()
+    ApplySitAllState()
+
+    hum.Seated:Connect(function(active, seatPart)
+        if not active or not seatPart then return end
+        if AntiSitAll then
+            hum.Sit = false
+            return
+        end
+
+        local isVehicle = seatPart:IsA("VehicleSeat")
+        if isVehicle and AntiSitVehicle then
+            hum.Sit = false
+        elseif (not isVehicle) and AntiSitChair then
+            hum.Sit = false
+        end
+    end)
+end
+
+LocalPlayer.CharacterAdded:Connect(HookCharacter)
+if LocalPlayer.Character then
+    HookCharacter(LocalPlayer.Character)
+end
+
+ProtectionTab:Toggle({
+    Title = "กันนั่งทุกอย่าง (บล็อกทุกจุดพร้อมกัน)",
+    Value = false,
+    Callback = function(state)
+        AntiSitAll = state
+        ApplySitAllState()
+        WindUI:Notify({ Title = "การป้องกัน", Content = "กันนั่งทุกอย่าง: " .. (state and "เปิด" or "ปิด"), Duration = 2 })
+    end,
+})
+
+ProtectionTab:Toggle({
+    Title = "กันนั่งเก้าอี้",
+    Value = false,
+    Callback = function(state)
+        AntiSitChair = state
+        WindUI:Notify({ Title = "การป้องกัน", Content = "กันนั่งเก้าอี้: " .. (state and "เปิด" or "ปิด"), Duration = 2 })
+    end,
+})
+
+ProtectionTab:Toggle({
+    Title = "กันนั่งรถ",
+    Value = false,
+    Callback = function(state)
+        AntiSitVehicle = state
+        WindUI:Notify({ Title = "การป้องกัน", Content = "กันนั่งรถ: " .. (state and "เปิด" or "ปิด"), Duration = 2 })
+    end,
+})
+
+ProtectionTab:Toggle({
+    Title = "กันโดนดีด (Knockback)",
+    Value = false,
+    Callback = function(state)
+        AntiKnockback = state
+        ApplyRagdollStates()
+        WindUI:Notify({ Title = "การป้องกัน", Content = "กันโดนดีด: " .. (state and "เปิด" or "ปิด"), Duration = 2 })
+    end,
+})
+
+ProtectionTab:Toggle({
+    Title = "กันล้ม (Ragdoll)",
+    Value = false,
+    Callback = function(state)
+        AntiRagdoll = state
+        ApplyRagdollStates()
+        WindUI:Notify({ Title = "การป้องกัน", Content = "กันล้ม: " .. (state and "เปิด" or "ปิด"), Duration = 2 })
+    end,
+})
+
 -- ===== ตั้งค่า (ต้องอยู่ล่างสุดเสมอ) =====
 Core.Settings(Window, WindUI)
