@@ -88,7 +88,6 @@ function Core.AddSongsTab(Window, WindUI)
         RenderSongs("")
     end
 
-    -- ===== ช่องค้นหา + ปุ่มรีเฟรช (อยู่บน) =====
     SongsTab:Input({
         Title = "ค้นหาเพลง",
         Placeholder = "พิมพ์ชื่อเพลง...",
@@ -105,7 +104,6 @@ function Core.AddSongsTab(Window, WindUI)
         end,
     })
 
-    -- ===== หัวข้อรายการเพลง (อยู่ล่าง ตามด้วยปุ่มเพลงที่โหลดมา) =====
     SongsTab:Section({ Title = "รายการเพลง" })
 
     LoadSongs()
