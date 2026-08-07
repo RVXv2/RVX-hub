@@ -175,12 +175,11 @@ ProtectionTab:Toggle({
 
 -- ===== แท็บการเคลื่อนไหว =====
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
 
 local MovementTab = Window:Tab({ Title = "การเคลื่อนไหว", Icon = "move" })
 
 -- ---- บิน (Fly) ----
-MovementTab:Section({ Title = "บิน", Desc = "เปิดโหมดบินอิสระ" })
+MovementTab:Section({ Title = "บิน", Desc = "เปิดโหมดบินอิสระ รองรับมือถือ" })
 
 local FlyEnabled = false
 local FlySpeed = 50
@@ -210,35 +209,22 @@ local function StartFly()
 
     FlyConnection = RunService.RenderStepped:Connect(function()
         local camera = workspace.CurrentCamera
-        if not camera or not root then return end
+        local currentChar = LocalPlayer.Character
+        local currentHum = currentChar and currentChar:FindFirstChildOfClass("Humanoid")
+        if not camera or not currentHum or not FlyBodyVelocity or not FlyBodyGyro then return end
 
-        local moveVector = Vector3.new(0, 0, 0)
+        -- MoveDirection มาจากระบบ Input ของ Roblox เอง (จอยมือถือ, WASD, Gamepad)
+        -- ความยาวของมันบอกว่าผลักจอย/กดปุ่มแรงแค่ไหน (0 ถึง 1)
+        local inputMagnitude = currentHum.MoveDirection.Magnitude
         local camCFrame = camera.CFrame
 
-        if UserInputService:IsKeyDown(Enum.KeyCode.W) then
-            moveVector = moveVector + camCFrame.LookVector
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.S) then
-            moveVector = moveVector - camCFrame.LookVector
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.A) then
-            moveVector = moveVector - camCFrame.RightVector
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.D) then
-            moveVector = moveVector + camCFrame.RightVector
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-            moveVector = moveVector + Vector3.new(0, 1, 0)
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
-            moveVector = moveVector - Vector3.new(0, 1, 0)
+        if inputMagnitude > 0.05 then
+            -- บินไปตามทิศทางที่กล้อง/หน้าจอหันไปเป๊ะๆ (รวมแนวขึ้น-ลง)
+            FlyBodyVelocity.Velocity = camCFrame.LookVector * FlySpeed * inputMagnitude
+        else
+            FlyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
         end
 
-        if moveVector.Magnitude > 0 then
-            moveVector = moveVector.Unit * FlySpeed
-        end
-
-        FlyBodyVelocity.Velocity = moveVector
         FlyBodyGyro.CFrame = camCFrame
     end)
 end
@@ -260,7 +246,7 @@ end
 
 MovementTab:Toggle({
     Title = "เปิดโหมดบิน",
-    Desc = "ใช้ W A S D บังคับทิศทาง Space ขึ้น Ctrl ลง",
+    Desc = "ผลักจอย (หรือ WASD) แล้วหันกล้องไปทางไหน จะบินไปทางนั้น",
     Value = false,
     Callback = function(state)
         FlyEnabled = state
