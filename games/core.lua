@@ -80,6 +80,35 @@ function Core.Settings(Window, WindUI)
         end,
     })
 
+    -- ===== Auto Reconnect =====
+    SettingsTab:Section({ Title = "การเชื่อมต่อ", Desc = "จัดการการหลุดเซิร์ฟเวอร์" })
+
+    local AutoReconnect = false
+    local TeleportService = game:GetService("TeleportService")
+    local Players = game:GetService("Players")
+
+    SettingsTab:Toggle({
+        Title = "Auto Reconnect",
+        Desc = "เข้าเกมใหม่อัตโนมัติถ้าหลุดเซิร์ฟเวอร์",
+        Value = false,
+        Callback = function(state)
+            AutoReconnect = state
+            WindUI:Notify({
+                Title = "การตั้งค่า",
+                Content = "Auto Reconnect: " .. (state and "เปิด" or "ปิด"),
+                Duration = 2,
+            })
+        end,
+    })
+
+    game:BindToClose(function()
+        if AutoReconnect then
+            pcall(function()
+                TeleportService:Teleport(game.PlaceId, Players.LocalPlayer)
+            end)
+        end
+    end)
+
     SettingsTab:Button({
         Title = "ปิด Hub",
         Icon = "x",
