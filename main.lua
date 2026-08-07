@@ -6,8 +6,12 @@ local ScriptMap = {
 
 local url = ScriptMap[PlaceId]
 
-if url then
-    loadstring(game:HttpGet(url))()
-else
-    warn("RVX Hub ยังไม่รองรับแมพนี้ | PlaceId: " .. tostring(PlaceId))
-end
+local Intro = loadstring(game:HttpGet("https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/intro.lua"))()
+
+Intro.Show(function()
+    if url then
+        loadstring(game:HttpGet(url))()
+    else
+        warn("RVX Hub ยังไม่รองรับแมพนี้ | PlaceId: " .. tostring(PlaceId))
+    end
+end)
