@@ -1,6 +1,11 @@
 local Core = loadstring(game:HttpGet("https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/core.lua"))()
 local Window, WindUI = Core.Init("Brookhaven-RP")
 
+-- ===== แท็บเพลง =====
+local Songs = loadstring(game:HttpGet("https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/songs.lua"))()
+Songs.AddSongsTab(Window, WindUI)
+
+-- ===== แท็บเทเลพอต =====
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
@@ -54,5 +59,5 @@ TeleportTab:Button({
     end,
 })
 
--- ต้องเรียกตัวนี้เป็นบรรทัดสุดท้ายเสมอ เพื่อให้ Settings อยู่ล่างสุด
+-- ===== ตั้งค่า (ต้องอยู่ล่างสุดเสมอ) =====
 Core.Settings(Window, WindUI)
