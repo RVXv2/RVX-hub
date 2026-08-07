@@ -65,7 +65,7 @@ function Core.AddSongsTab(Window, WindUI)
         end
 
         local ok, res = pcall(fn, {
-            Url = API_BASE .. "/api/public/songs?banned=false&limit=100",
+            Url = API_BASE .. "/api/public/songs?banned=false&limit=1000",
             Method = "GET",
             Headers = { ["X-API-Key"] = API_KEY },
         })
