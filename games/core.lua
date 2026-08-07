@@ -2,7 +2,6 @@ local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/rel
 
 local Core = {}
 
--- เรียกตอนเริ่มต้น สร้าง Window + หน้าแรก (จะอยู่บนสุดเสมอ)
 function Core.Init(mapName)
     local Window = WindUI:CreateWindow({
         Title = "RVX hub X " .. mapName,
@@ -13,9 +12,24 @@ function Core.Init(mapName)
     local Players = game:GetService("Players")
     local LocalPlayer = Players.LocalPlayer
 
-    local HomeTab = Window:Tab({ Title = "หน้าแรก", Icon = "home" })
+    local HomeTab = Window:Tab({ Title = "หน้าแรก", Icon = "house" })
 
-    HomeTab:Section({ Title = "โปรไฟล์ผู้เล่น", Desc = mapName })
+    local ProfileSection = HomeTab:Section({ Title = "โปรไฟล์ผู้เล่น", Desc = mapName })
+
+    -- ดึงรูปโปรไฟล์ตัวละคร (แบบ 3D headshot)
+    local content, isReady = Players:GetUserThumbnailAsync(
+        LocalPlayer.UserId,
+        Enum.ThumbnailType.HeadShot,
+        Enum.ThumbnailSize.Size420x420
+    )
+
+    ProfileSection:Image({
+        Image = content,
+        AspectRatio = "1:1",
+        Radius = 12,
+    })
+
+    ProfileSection:Space()
 
     HomeTab:Paragraph({
         Title = LocalPlayer.DisplayName,
@@ -40,7 +54,6 @@ function Core.Init(mapName)
     return Window, WindUI
 end
 
--- เรียกตอนท้ายสุดของทุกไฟล์แมพ สร้างแท็บตั้งค่า (จะอยู่ล่างสุดเสมอ)
 function Core.Settings(Window, WindUI)
     local SettingsTab = Window:Tab({ Title = "การตั้งค่า", Icon = "settings" })
 
