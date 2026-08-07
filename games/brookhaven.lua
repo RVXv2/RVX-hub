@@ -62,8 +62,6 @@ TeleportTab:Button({
 -- ===== แท็บการป้องกัน =====
 local ProtectionTab = Window:Tab({ Title = "การป้องกัน", Icon = "shield" })
 
-ProtectionTab:Section({ Title = "ป้องกันตัวละคร", Desc = "เลือกเปิดได้อิสระทีละอัน" })
-
 local AntiSitAll = false
 local AntiSitChair = false
 local AntiSitVehicle = false
@@ -118,8 +116,11 @@ if LocalPlayer.Character then
     HookCharacter(LocalPlayer.Character)
 end
 
+ProtectionTab:Section({ Title = "การนั่ง", Desc = "ป้องกันไม่ให้ตัวละครนั่งได้" })
+
 ProtectionTab:Toggle({
-    Title = "กันนั่งทุกอย่าง (บล็อกทุกจุดพร้อมกัน)",
+    Title = "กันนั่งทุกอย่าง",
+    Desc = "บล็อกทุกจุดพร้อมกัน (เก้าอี้ + รถ + อื่นๆ)",
     Value = false,
     Callback = function(state)
         AntiSitAll = state
@@ -130,6 +131,7 @@ ProtectionTab:Toggle({
 
 ProtectionTab:Toggle({
     Title = "กันนั่งเก้าอี้",
+    Desc = "เฉพาะที่นั่งทั่วไป ไม่รวมรถ",
     Value = false,
     Callback = function(state)
         AntiSitChair = state
@@ -139,6 +141,7 @@ ProtectionTab:Toggle({
 
 ProtectionTab:Toggle({
     Title = "กันนั่งรถ",
+    Desc = "เฉพาะเบาะรถ ไม่รวมเก้าอี้",
     Value = false,
     Callback = function(state)
         AntiSitVehicle = state
@@ -146,8 +149,11 @@ ProtectionTab:Toggle({
     end,
 })
 
+ProtectionTab:Section({ Title = "แรงกระแทก", Desc = "ป้องกันการถูกเหวี่ยง/ล้ม" })
+
 ProtectionTab:Toggle({
-    Title = "กันโดนดีด (Knockback)",
+    Title = "กันโดนดีด",
+    Desc = "ป้องกันการถูกดีด (Knockback)",
     Value = false,
     Callback = function(state)
         AntiKnockback = state
@@ -157,12 +163,79 @@ ProtectionTab:Toggle({
 })
 
 ProtectionTab:Toggle({
-    Title = "กันล้ม (Ragdoll)",
+    Title = "กันล้ม",
+    Desc = "ป้องกัน Ragdoll",
     Value = false,
     Callback = function(state)
         AntiRagdoll = state
         ApplyRagdollStates()
         WindUI:Notify({ Title = "การป้องกัน", Content = "กันล้ม: " .. (state and "เปิด" or "ปิด"), Duration = 2 })
+    end,
+})
+
+-- ===== แท็บ Anti Lag =====
+local PerformanceTab = Window:Tab({ Title = "ประสิทธิภาพ", Icon = "gauge" })
+
+PerformanceTab:Section({ Title = "ลดแลค", Desc = "ลบสิ่งของที่ไม่จำเป็นเพื่อเพิ่ม FPS" })
+
+local RemovedItems = {}
+
+PerformanceTab:Button({
+    Title = "ลบต้นไม้/พุ่มไม้",
+    Icon = "trash-2",
+    Callback = function()
+        local count = 0
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if obj:IsA("BasePart") then
+                local n = string.lower(obj.Name)
+                if string.find(n, "tree") or string.find(n, "bush") or string.find(n, "plant") then
+                    obj.Transparency = 1
+                    obj.CanCollide = false
+                    table.insert(RemovedItems, obj)
+                    count += 1
+                end
+            end
+        end
+        WindUI:Notify({ Title = "Anti Lag", Content = "ซ่อนแล้ว " .. count .. " ชิ้น", Duration = 3 })
+    end,
+})
+
+PerformanceTab:Button({
+    Title = "ปิดเงา (Shadows)",
+    Icon = "sun",
+    Callback = function()
+        settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+        game:GetService("Lighting").GlobalShadows = false
+        WindUI:Notify({ Title = "Anti Lag", Content = "ปิดเงาและลดคุณภาพกราฟิกแล้ว", Duration = 3 })
+    end,
+})
+
+PerformanceTab:Button({
+    Title = "ลดระยะมองเห็น (Fog/Distance)",
+    Icon = "eye-off",
+    Callback = function()
+        local Lighting = game:GetService("Lighting")
+        Lighting.FogEnd = 300
+        workspace.StreamingTargetRadius = 300
+        WindUI:Notify({ Title = "Anti Lag", Content = "ลดระยะ Render แล้ว", Duration = 3 })
+    end,
+})
+
+PerformanceTab:Button({
+    Title = "คืนค่าทั้งหมด",
+    Icon = "rotate-ccw",
+    Callback = function()
+        for _, obj in ipairs(RemovedItems) do
+            if obj and obj.Parent then
+                obj.Transparency = 0
+                obj.CanCollide = true
+            end
+        end
+        table.clear(RemovedItems)
+        settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
+        game:GetService("Lighting").GlobalShadows = true
+        game:GetService("Lighting").FogEnd = 100000
+        WindUI:Notify({ Title = "Anti Lag", Content = "คืนค่าทุกอย่างแล้ว", Duration = 3 })
     end,
 })
 
