@@ -163,9 +163,9 @@ function Intro.Show(onNext)
     msg3.ZIndex = 9
     msg3.Parent = mainFrame
 
-    local function makeBtn(text, pos, color)
+    local function makeBtn(text, pos, color, width)
         local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(0, 100, 0, 35)
+        btn.Size = UDim2.new(0, width or 100, 0, 35)
         btn.Position = pos
         btn.BackgroundColor3 = color
         btn.Text = text
@@ -191,8 +191,8 @@ function Intro.Show(onNext)
         return btn
     end
 
-    local closeBtn = makeBtn("ปิด", UDim2.new(1, -225, 1, -55), Color3.fromRGB(60, 20, 100))
-    local nextBtn = makeBtn("เข้าใช้งาน →", UDim2.new(1, -175, 1, -55), MainColor)
+    local closeBtn = makeBtn("ปิด", UDim2.new(1, -260, 1, -55), Color3.fromRGB(60, 20, 100), 80)
+    local nextBtn = makeBtn("เข้าใช้งาน →", UDim2.new(1, -170, 1, -55), MainColor, 150)
 
     local heartbeatConn
     heartbeatConn = RunService.Heartbeat:Connect(function(dt)
