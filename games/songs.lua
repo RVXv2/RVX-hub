@@ -1,20 +1,7 @@
 local Core = {}
 
-local API_BASE = "http://de3.bot-hosting.net:20209"  -- << เปลี่ยนเป็นโดเมนจริงของ API คุณ
-local API_KEY  = "sgid_08168ec5efd4de42468154fadb9e9a9f38ebff76"        -- << ใส่ key จริงตรงนี้ (อย่าแชร์ไฟล์นี้สาธารณะถ้าใส่ key ตรงๆ)
-
-local function DoRequest(opts)
-    local fn = (syn and syn.request) or request or http_request or fluxus_request
-    if not fn then
-        warn("Executor นี้ไม่รองรับ request แบบใส่ header")
-        return nil
-    end
-    local ok, res = pcall(fn, opts)
-    if ok and res and res.Body then
-        return res.Body
-    end
-    return nil
-end
+local API_BASE = "http://de3.bot-hosting.net:20209"  -- << เปลี่ยนเป็นโดเมนจริงของคุณ (ไม่มี / ท้าย)
+local API_KEY  = "sgid_08168ec5efd4de42468154fadb9e9a9f38ebff76"                  -- << ใส่ key จริงของคุณ
 
 function Core.AddSongsTab(Window, WindUI)
     local SongsTab = Window:Tab({ Title = "เพลง", Icon = "music" })
@@ -54,25 +41,44 @@ function Core.AddSongsTab(Window, WindUI)
     end
 
     local function LoadSongs()
-        local body = DoRequest({
+        WindUI:Notify({ Title = "กำลังโหลด...", Content = "เชื่อมต่อ API", Duration = 2 })
+
+        local fn = (syn and syn.request) or request or http_request or fluxus_request
+        if not fn then
+            WindUI:Notify({ Title = "ผิดพลาด", Content = "Executor นี้ไม่มีฟังก์ชัน request", Duration = 5 })
+            return
+        end
+
+        local ok, res = pcall(fn, {
             Url = API_BASE .. "/api/public/songs?banned=false&limit=100",
             Method = "GET",
             Headers = { ["X-API-Key"] = API_KEY },
         })
 
-        if not body then
-            WindUI:Notify({ Title = "ผิดพลาด", Content = "โหลดรายชื่อเพลงไม่สำเร็จ", Duration = 3 })
+        if not ok then
+            WindUI:Notify({ Title = "Request ผิดพลาด", Content = tostring(res), Duration = 6 })
             return
         end
 
-        local ok, decoded = pcall(function()
-            return game:GetService("HttpService"):JSONDecode(body)
+        if not res or not res.Body then
+            WindUI:Notify({ Title = "ไม่มีข้อมูลตอบกลับ", Content = "res เป็น nil หรือไม่มี Body", Duration = 5 })
+            return
+        end
+
+        WindUI:Notify({ Title = "ได้ข้อมูลแล้ว", Content = "สถานะ: " .. tostring(res.StatusCode), Duration = 4 })
+
+        local decOk, decoded = pcall(function()
+            return game:GetService("HttpService"):JSONDecode(res.Body)
         end)
 
-        if ok and decoded then
-            AllSongs = decoded
-            RenderSongs("")
+        if not decOk then
+            WindUI:Notify({ Title = "แปลง JSON ไม่ได้", Content = tostring(res.Body):sub(1, 100), Duration = 6 })
+            return
         end
+
+        AllSongs = decoded
+        WindUI:Notify({ Title = "สำเร็จ", Content = "โหลดเพลงได้ " .. #AllSongs .. " เพลง", Duration = 3 })
+        RenderSongs("")
     end
 
     SongsTab:Input({
