@@ -34,26 +34,6 @@ function Core.AddSongsTab(Window, WindUI)
         return ok
     end
 
-    SongsTab:Button({
-        Title = "เสกลำโพง",
-        Icon = "speaker",
-        Callback = function()
-            if IsHoldingBoombox() then
-                WindUI:Notify({ Title = "เพลง", Content = "ถือลำโพงอยู่แล้ว", Duration = 2 })
-                return
-            end
-
-            local ok = EquipBoombox()
-            if ok then
-                WindUI:Notify({ Title = "สำเร็จ", Content = "หยิบลำโพงแล้ว", Duration = 2 })
-            else
-                WindUI:Notify({ Title = "ผิดพลาด", Content = "หยิบลำโพงไม่สำเร็จ", Duration = 3 })
-            end
-        end,
-    })
-
-    local currentId = ""
-
     local function PlayMusic(id)
         id = tostring(id):gsub("%D", "")
         if id == "" then return false end
@@ -76,6 +56,26 @@ function Core.AddSongsTab(Window, WindUI)
             playRemote:FireServer("ToolMusicText", "", nil, true)
         end)
     end
+
+    SongsTab:Button({
+        Title = "เสกลำโพง",
+        Icon = "speaker",
+        Callback = function()
+            if IsHoldingBoombox() then
+                WindUI:Notify({ Title = "เพลง", Content = "ถือลำโพงอยู่แล้ว", Duration = 2 })
+                return
+            end
+
+            local ok = EquipBoombox()
+            if ok then
+                WindUI:Notify({ Title = "สำเร็จ", Content = "หยิบลำโพงแล้ว", Duration = 2 })
+            else
+                WindUI:Notify({ Title = "ผิดพลาด", Content = "หยิบลำโพงไม่สำเร็จ", Duration = 3 })
+            end
+        end,
+    })
+
+    local currentId = ""
 
     SongsTab:Input({
         Title = "เปิดเพลงด้วย ID",
@@ -132,9 +132,26 @@ function Core.AddSongsTab(Window, WindUI)
         for _, song in ipairs(AllSongs) do
             local matches = filterText == "" or string.find(string.lower(song.name), string.lower(filterText), 1, true)
             if matches then
-                local ok, b = pcall(function()
+                -- ปุ่มเล่น
+                local playOk, playBtn = pcall(function()
                     return SongsTab:Button({
-                        Title = song.name .. "  |  ID: " .. song.id,
+                        Title = "▶ " .. song.name .. "  |  ID: " .. song.id,
+                        Icon = "play",
+                        Callback = function()
+                            local ok = PlayMusic(song.id)
+                            if ok then
+                                WindUI:Notify({ Title = "กำลังเล่น", Content = song.name, Duration = 2 })
+                            else
+                                WindUI:Notify({ Title = "ผิดพลาด", Content = "เล่นเพลงไม่สำเร็จ", Duration = 3 })
+                            end
+                        end,
+                    })
+                end)
+
+                -- ปุ่มคัดลอก ID
+                local copyOk, copyBtn = pcall(function()
+                    return SongsTab:Button({
+                        Title = "คัดลอก ID",
                         Icon = "copy",
                         Callback = function()
                             if setclipboard then
@@ -149,11 +166,15 @@ function Core.AddSongsTab(Window, WindUI)
                     })
                 end)
 
-                if ok then
-                    table.insert(SongButtons, b)
+                if playOk then
+                    table.insert(SongButtons, playBtn)
                     shown += 1
                 else
                     errorCount += 1
+                end
+
+                if copyOk then
+                    table.insert(SongButtons, copyBtn)
                 end
             end
         end
