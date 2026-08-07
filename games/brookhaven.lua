@@ -173,6 +173,181 @@ ProtectionTab:Toggle({
     end,
 })
 
+-- ===== แท็บการเคลื่อนไหว =====
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local MovementTab = Window:Tab({ Title = "การเคลื่อนไหว", Icon = "move" })
+
+-- ---- บิน (Fly) ----
+MovementTab:Section({ Title = "บิน", Desc = "เปิดโหมดบินอิสระ" })
+
+local FlyEnabled = false
+local FlySpeed = 50
+local FlyConnection = nil
+local FlyBodyVelocity = nil
+local FlyBodyGyro = nil
+
+local function StartFly()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not root or not hum then return end
+
+    hum.PlatformStand = false
+
+    FlyBodyVelocity = Instance.new("BodyVelocity")
+    FlyBodyVelocity.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+    FlyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
+    FlyBodyVelocity.Parent = root
+
+    FlyBodyGyro = Instance.new("BodyGyro")
+    FlyBodyGyro.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
+    FlyBodyGyro.P = 3000
+    FlyBodyGyro.CFrame = root.CFrame
+    FlyBodyGyro.Parent = root
+
+    FlyConnection = RunService.RenderStepped:Connect(function()
+        local camera = workspace.CurrentCamera
+        if not camera or not root then return end
+
+        local moveVector = Vector3.new(0, 0, 0)
+        local camCFrame = camera.CFrame
+
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+            moveVector = moveVector + camCFrame.LookVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+            moveVector = moveVector - camCFrame.LookVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+            moveVector = moveVector - camCFrame.RightVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+            moveVector = moveVector + camCFrame.RightVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+            moveVector = moveVector + Vector3.new(0, 1, 0)
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+            moveVector = moveVector - Vector3.new(0, 1, 0)
+        end
+
+        if moveVector.Magnitude > 0 then
+            moveVector = moveVector.Unit * FlySpeed
+        end
+
+        FlyBodyVelocity.Velocity = moveVector
+        FlyBodyGyro.CFrame = camCFrame
+    end)
+end
+
+local function StopFly()
+    if FlyConnection then
+        FlyConnection:Disconnect()
+        FlyConnection = nil
+    end
+    if FlyBodyVelocity then
+        FlyBodyVelocity:Destroy()
+        FlyBodyVelocity = nil
+    end
+    if FlyBodyGyro then
+        FlyBodyGyro:Destroy()
+        FlyBodyGyro = nil
+    end
+end
+
+MovementTab:Toggle({
+    Title = "เปิดโหมดบิน",
+    Desc = "ใช้ W A S D บังคับทิศทาง Space ขึ้น Ctrl ลง",
+    Value = false,
+    Callback = function(state)
+        FlyEnabled = state
+        if FlyEnabled then
+            StartFly()
+            WindUI:Notify({ Title = "การเคลื่อนไหว", Content = "เปิดโหมดบินแล้ว", Duration = 2 })
+        else
+            StopFly()
+            WindUI:Notify({ Title = "การเคลื่อนไหว", Content = "ปิดโหมดบินแล้ว", Duration = 2 })
+        end
+    end,
+})
+
+MovementTab:Slider({
+    Title = "ความเร็วบิน",
+    Desc = "ปรับความเร็วขณะบิน",
+    Value = { Min = 10, Max = 200, Default = 50 },
+    Callback = function(value)
+        FlySpeed = value
+    end,
+})
+
+-- คืนสถานะบินอัตโนมัติเมื่อร่างเกิดใหม่ (ตายแล้วเกิด/เทเลพอตฉาก)
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(1)
+    if FlyEnabled then
+        StartFly()
+    end
+end)
+
+-- ---- ความเร็ววิ่ง ----
+MovementTab:Section({ Title = "ความเร็ววิ่ง", Desc = "ปรับ WalkSpeed ของตัวละคร" })
+
+local WalkSpeedValue = 16
+
+local function ApplyWalkSpeed()
+    local hum = GetHumanoid()
+    if hum then
+        hum.WalkSpeed = WalkSpeedValue
+    end
+end
+
+MovementTab:Slider({
+    Title = "ความเร็ววิ่ง",
+    Desc = "ค่าเริ่มต้นของเกมคือ 16",
+    Value = { Min = 16, Max = 200, Default = 16 },
+    Callback = function(value)
+        WalkSpeedValue = value
+        ApplyWalkSpeed()
+    end,
+})
+
+-- ---- ความสูงกระโดด ----
+MovementTab:Section({ Title = "ความสูงกระโดด", Desc = "ปรับ JumpPower ของตัวละคร" })
+
+local JumpPowerValue = 50
+
+local function ApplyJumpPower()
+    local hum = GetHumanoid()
+    if hum then
+        hum.UseJumpPower = true
+        hum.JumpPower = JumpPowerValue
+    end
+end
+
+MovementTab:Slider({
+    Title = "ความสูงกระโดด",
+    Desc = "ค่าเริ่มต้นของเกมคือ 50",
+    Value = { Min = 50, Max = 300, Default = 50 },
+    Callback = function(value)
+        JumpPowerValue = value
+        ApplyJumpPower()
+    end,
+})
+
+-- คืนค่าความเร็ววิ่ง/กระโดดอัตโนมัติเมื่อร่างเกิดใหม่
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(1)
+    ApplyWalkSpeed()
+    ApplyJumpPower()
+end)
+
+if LocalPlayer.Character then
+    ApplyWalkSpeed()
+    ApplyJumpPower()
+end
+
 -- ===== แท็บ Anti Lag =====
 local PerformanceTab = Window:Tab({ Title = "ประสิทธิภาพ", Icon = "gauge" })
 
