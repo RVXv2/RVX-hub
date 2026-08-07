@@ -113,7 +113,7 @@ function Core.AddSongsTab(Window, WindUI)
     })
 
     -- ===== ค้นหาเพลงจาก API =====
-    SongsTab:Section({ Title = "ค้นหาเพลง", Desc = "ดึงข้อมูลจาก API สาธารณะ" })
+    SongsTab:Section({ Title = "ค้นหาเพลง", Desc = "แตะปุ่มเพลง 1 ครั้ง = เล่นเพลง | แตะรัว 2 ครั้งเร็วๆ = คัดลอก ID" })
 
     local AllSongs = {}
     local SongButtons = {}
@@ -132,49 +132,47 @@ function Core.AddSongsTab(Window, WindUI)
         for _, song in ipairs(AllSongs) do
             local matches = filterText == "" or string.find(string.lower(song.name), string.lower(filterText), 1, true)
             if matches then
-                -- ปุ่มเล่น
-                local playOk, playBtn = pcall(function()
+                local lastClick = 0
+
+                -- ปุ่มเดียวต่อเพลง: แตะครั้งเดียว = เล่น, แตะซ้ำเร็วๆ (ดับเบิลแตะ) = คัดลอก ID
+                local ok, btn = pcall(function()
                     return SongsTab:Button({
-                        Title = "▶ " .. song.name .. "  |  ID: " .. song.id,
+                        Title = song.name .. "  |  ID: " .. song.id,
+                        Desc = "แตะครั้งเดียวเพื่อเล่น | แตะรัว 2 ครั้งเพื่อคัดลอก ID",
                         Icon = "play",
                         Callback = function()
-                            local ok = PlayMusic(song.id)
-                            if ok then
-                                WindUI:Notify({ Title = "กำลังเล่น", Content = song.name, Duration = 2 })
+                            local now = tick()
+
+                            if now - lastClick <= 0.4 then
+                                -- ดับเบิลแตะ -> คัดลอก ID
+                                lastClick = 0
+                                if setclipboard then
+                                    setclipboard(song.id)
+                                end
+                                WindUI:Notify({
+                                    Title = "คัดลอกแล้ว",
+                                    Content = song.name .. " (" .. song.id .. ")",
+                                    Duration = 2,
+                                })
                             else
-                                WindUI:Notify({ Title = "ผิดพลาด", Content = "เล่นเพลงไม่สำเร็จ", Duration = 3 })
+                                -- แตะครั้งเดียว -> เล่นเพลง
+                                lastClick = now
+                                local playOk = PlayMusic(song.id)
+                                if playOk then
+                                    WindUI:Notify({ Title = "กำลังเล่น", Content = song.name, Duration = 2 })
+                                else
+                                    WindUI:Notify({ Title = "ผิดพลาด", Content = "เล่นเพลงไม่สำเร็จ", Duration = 3 })
+                                end
                             end
                         end,
                     })
                 end)
 
-                -- ปุ่มคัดลอก ID
-                local copyOk, copyBtn = pcall(function()
-                    return SongsTab:Button({
-                        Title = "คัดลอก ID",
-                        Icon = "copy",
-                        Callback = function()
-                            if setclipboard then
-                                setclipboard(song.id)
-                            end
-                            WindUI:Notify({
-                                Title = "คัดลอกแล้ว",
-                                Content = song.name .. " (" .. song.id .. ")",
-                                Duration = 2,
-                            })
-                        end,
-                    })
-                end)
-
-                if playOk then
-                    table.insert(SongButtons, playBtn)
+                if ok then
+                    table.insert(SongButtons, btn)
                     shown += 1
                 else
                     errorCount += 1
-                end
-
-                if copyOk then
-                    table.insert(SongButtons, copyBtn)
                 end
             end
         end
