@@ -213,14 +213,17 @@ local function StartFly()
         local currentHum = currentChar and currentChar:FindFirstChildOfClass("Humanoid")
         if not camera or not currentHum or not FlyBodyVelocity or not FlyBodyGyro then return end
 
-        -- MoveDirection มาจากระบบ Input ของ Roblox เอง (จอยมือถือ, WASD, Gamepad)
-        -- ความยาวของมันบอกว่าผลักจอย/กดปุ่มแรงแค่ไหน (0 ถึง 1)
-        local inputMagnitude = currentHum.MoveDirection.Magnitude
+        -- MoveDirection คือทิศทางจริงตามที่โยกจอย/กดปุ่ม (หน้า/หลัง/ซ้าย/ขวา คำนวณสัมพันธ์กับกล้องให้แล้วโดย Roblox)
+        local moveDir = currentHum.MoveDirection
+        local inputMagnitude = moveDir.Magnitude
         local camCFrame = camera.CFrame
 
         if inputMagnitude > 0.05 then
-            -- บินไปตามทิศทางที่กล้อง/หน้าจอหันไปเป๊ะๆ (รวมแนวขึ้น-ลง)
-            FlyBodyVelocity.Velocity = camCFrame.LookVector * FlySpeed * inputMagnitude
+            -- แนวราบ: ไปตามทิศทางที่โยกจอยจริงๆ
+            local horizontal = moveDir.Unit * FlySpeed * inputMagnitude
+            -- แนวดิ่ง: เงย/ก้มกล้อง เพื่อบินขึ้น/ลง
+            local vertical = camCFrame.LookVector.Y * FlySpeed * inputMagnitude
+            FlyBodyVelocity.Velocity = horizontal + Vector3.new(0, vertical, 0)
         else
             FlyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
         end
@@ -246,7 +249,7 @@ end
 
 MovementTab:Toggle({
     Title = "เปิดโหมดบิน",
-    Desc = "ผลักจอย (หรือ WASD) แล้วหันกล้องไปทางไหน จะบินไปทางนั้น",
+    Desc = "โยกจอยไปทางไหนก็บินไปทางนั้น เงย/ก้มกล้องเพื่อขึ้น-ลง",
     Value = false,
     Callback = function(state)
         FlyEnabled = state
@@ -275,6 +278,94 @@ LocalPlayer.CharacterAdded:Connect(function()
     if FlyEnabled then
         StartFly()
     end
+end)
+
+-- ---- หมุนตัวละคร ----
+MovementTab:Section({ Title = "หมุนตัวละคร", Desc = "หมุนตัวเองอัตโนมัติต่อเนื่อง ปรับความเร็วได้" })
+
+local SpinEnabled = false
+local SpinSpeed = 90 -- องศาต่อวินาที
+local SpinConnection = nil
+local SpinAngle = 0
+
+local function StartSpin()
+    SpinAngle = 0
+    SpinConnection = RunService.Heartbeat:Connect(function(dt)
+        local currentChar = LocalPlayer.Character
+        local currentRoot = currentChar and currentChar:FindFirstChild("HumanoidRootPart")
+        if not currentRoot then return end
+
+        SpinAngle = SpinAngle + SpinSpeed * dt
+        local pos = currentRoot.Position
+        currentRoot.CFrame = CFrame.new(pos) * CFrame.Angles(0, math.rad(SpinAngle), 0)
+    end)
+end
+
+local function StopSpin()
+    if SpinConnection then
+        SpinConnection:Disconnect()
+        SpinConnection = nil
+    end
+end
+
+MovementTab:Toggle({
+    Title = "เปิดหมุนตัวละคร",
+    Desc = "ตัวละครจะหมุนรอบตัวเองต่อเนื่องอัตโนมัติ",
+    Value = false,
+    Callback = function(state)
+        SpinEnabled = state
+        if SpinEnabled then
+            StartSpin()
+            WindUI:Notify({ Title = "การเคลื่อนไหว", Content = "เปิดหมุนตัวละครแล้ว", Duration = 2 })
+        else
+            StopSpin()
+            WindUI:Notify({ Title = "การเคลื่อนไหว", Content = "ปิดหมุนตัวละครแล้ว", Duration = 2 })
+        end
+    end,
+})
+
+MovementTab:Slider({
+    Title = "ความเร็วหมุน",
+    Desc = "หน่วยองศาต่อวินาที",
+    Value = { Min = 10, Max = 720, Default = 90 },
+    Callback = function(value)
+        SpinSpeed = value
+    end,
+})
+
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(1)
+    if SpinEnabled then
+        StartSpin()
+    end
+end)
+
+-- ---- ล็อคตำแหน่ง ----
+MovementTab:Section({ Title = "ล็อคตำแหน่ง", Desc = "ค้างตัวละครอยู่กับที่ แต่ยังเปลี่ยนท่าทาง/เล่นแอนิเมชันได้" })
+
+local PositionLocked = false
+
+local function ApplyPositionLock(state)
+    local char = LocalPlayer.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    root.Anchored = state
+end
+
+MovementTab:Toggle({
+    Title = "ล็อคตำแหน่ง",
+    Desc = "ตรึงตำแหน่งปัจจุบันไว้ ขยับที่ไม่ได้แต่ยังโพสท่า/เล่นแอนิเมชันได้",
+    Value = false,
+    Callback = function(state)
+        PositionLocked = state
+        ApplyPositionLock(state)
+        WindUI:Notify({ Title = "การเคลื่อนไหว", Content = "ล็อคตำแหน่ง: " .. (state and "เปิด" or "ปิด"), Duration = 2 })
+    end,
+})
+
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(1)
+    PositionLocked = false
 end)
 
 -- ---- ความเร็ววิ่ง ----
