@@ -1,7 +1,7 @@
 local Core = {}
 
-local API_BASE = "http://de3.bot-hosting.net:20209"  -- << เปลี่ยนเป็นโดเมนจริงของคุณ (ไม่มี / ท้าย)
-local API_KEY  = "sgid_08168ec5efd4de42468154fadb9e9a9f38ebff76"                  -- << ใส่ key จริงของคุณ
+local API_BASE = "http://de3.bot-hosting.net:20209"
+local API_KEY  = "sgid_08168ec5efd4de42468154fadb9e9a9f38ebff76"
 
 function Core.AddSongsTab(Window, WindUI)
     local SongsTab = Window:Tab({ Title = "เพลง", Icon = "music" })
@@ -10,18 +10,22 @@ function Core.AddSongsTab(Window, WindUI)
 
     local AllSongs = {}
     local SongButtons = {}
-    local ListSection = SongsTab:Section({ Title = "รายการเพลง" })
+
+    SongsTab:Section({ Title = "รายการเพลง" })
 
     local function RenderSongs(filterText)
         for _, btn in ipairs(SongButtons) do
-            if btn.Destroy then btn:Destroy() end
+            pcall(function()
+                if btn.Destroy then btn:Destroy() end
+            end)
         end
         table.clear(SongButtons)
 
+        local shown = 0
         for _, song in ipairs(AllSongs) do
             local matches = filterText == "" or string.find(string.lower(song.name), string.lower(filterText), 1, true)
             if matches then
-                local b = ListSection:Button({
+                local b = SongsTab:Button({
                     Title = song.name .. "  |  ID: " .. song.id,
                     Icon = "copy",
                     Callback = function()
@@ -36,13 +40,14 @@ function Core.AddSongsTab(Window, WindUI)
                     end,
                 })
                 table.insert(SongButtons, b)
+                shown += 1
             end
         end
+
+        WindUI:Notify({ Title = "แสดงผลแล้ว", Content = "โชว์ " .. shown .. " เพลง", Duration = 2 })
     end
 
     local function LoadSongs()
-        WindUI:Notify({ Title = "กำลังโหลด...", Content = "เชื่อมต่อ API", Duration = 2 })
-
         local fn = (syn and syn.request) or request or http_request or fluxus_request
         if not fn then
             WindUI:Notify({ Title = "ผิดพลาด", Content = "Executor นี้ไม่มีฟังก์ชัน request", Duration = 5 })
@@ -55,23 +60,16 @@ function Core.AddSongsTab(Window, WindUI)
             Headers = { ["X-API-Key"] = API_KEY },
         })
 
-        if not ok then
-            WindUI:Notify({ Title = "Request ผิดพลาด", Content = tostring(res), Duration = 6 })
+        if not ok or not res or not res.Body then
+            WindUI:Notify({ Title = "ผิดพลาด", Content = "โหลดข้อมูลไม่สำเร็จ", Duration = 4 })
             return
         end
-
-        if not res or not res.Body then
-            WindUI:Notify({ Title = "ไม่มีข้อมูลตอบกลับ", Content = "res เป็น nil หรือไม่มี Body", Duration = 5 })
-            return
-        end
-
-        WindUI:Notify({ Title = "ได้ข้อมูลแล้ว", Content = "สถานะ: " .. tostring(res.StatusCode), Duration = 4 })
 
         local decOk, decoded = pcall(function()
             return game:GetService("HttpService"):JSONDecode(res.Body)
         end)
 
-        if not decOk then
+        if not decOk or not decoded then
             WindUI:Notify({ Title = "แปลง JSON ไม่ได้", Content = tostring(res.Body):sub(1, 100), Duration = 6 })
             return
         end
