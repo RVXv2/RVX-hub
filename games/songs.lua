@@ -11,8 +11,6 @@ function Core.AddSongsTab(Window, WindUI)
     local AllSongs = {}
     local SongButtons = {}
 
-    SongsTab:Section({ Title = "รายการเพลง" })
-
     local function RenderSongs(filterText)
         for _, btn in ipairs(SongButtons) do
             pcall(function()
@@ -22,29 +20,41 @@ function Core.AddSongsTab(Window, WindUI)
         table.clear(SongButtons)
 
         local shown = 0
+        local errorCount = 0
+
         for _, song in ipairs(AllSongs) do
             local matches = filterText == "" or string.find(string.lower(song.name), string.lower(filterText), 1, true)
             if matches then
-                local b = SongsTab:Button({
-                    Title = song.name .. "  |  ID: " .. song.id,
-                    Icon = "copy",
-                    Callback = function()
-                        if setclipboard then
-                            setclipboard(song.id)
-                        end
-                        WindUI:Notify({
-                            Title = "คัดลอกแล้ว",
-                            Content = song.name .. " (" .. song.id .. ")",
-                            Duration = 2,
-                        })
-                    end,
-                })
-                table.insert(SongButtons, b)
-                shown += 1
+                local ok, b = pcall(function()
+                    return SongsTab:Button({
+                        Title = song.name .. "  |  ID: " .. song.id,
+                        Icon = "copy",
+                        Callback = function()
+                            if setclipboard then
+                                setclipboard(song.id)
+                            end
+                            WindUI:Notify({
+                                Title = "คัดลอกแล้ว",
+                                Content = song.name .. " (" .. song.id .. ")",
+                                Duration = 2,
+                            })
+                        end,
+                    })
+                end)
+
+                if ok then
+                    table.insert(SongButtons, b)
+                    shown += 1
+                else
+                    errorCount += 1
+                end
             end
         end
 
-        WindUI:Notify({ Title = "แสดงผลแล้ว", Content = "โชว์ " .. shown .. " เพลง", Duration = 2 })
+        if errorCount > 0 then
+            WindUI:Notify({ Title = "มีข้อผิดพลาด", Content = "สร้างปุ่มไม่สำเร็จ " .. errorCount .. " อัน", Duration = 5 })
+        end
+        WindUI:Notify({ Title = "แสดงผลแล้ว", Content = "โชว์ " .. shown .. " เพลง", Duration = 3 })
     end
 
     local function LoadSongs()
@@ -75,10 +85,10 @@ function Core.AddSongsTab(Window, WindUI)
         end
 
         AllSongs = decoded
-        WindUI:Notify({ Title = "สำเร็จ", Content = "โหลดเพลงได้ " .. #AllSongs .. " เพลง", Duration = 3 })
         RenderSongs("")
     end
 
+    -- ===== ช่องค้นหา + ปุ่มรีเฟรช (อยู่บน) =====
     SongsTab:Input({
         Title = "ค้นหาเพลง",
         Placeholder = "พิมพ์ชื่อเพลง...",
@@ -94,6 +104,9 @@ function Core.AddSongsTab(Window, WindUI)
             LoadSongs()
         end,
     })
+
+    -- ===== หัวข้อรายการเพลง (อยู่ล่าง ตามด้วยปุ่มเพลงที่โหลดมา) =====
+    SongsTab:Section({ Title = "รายการเพลง" })
 
     LoadSongs()
 end
