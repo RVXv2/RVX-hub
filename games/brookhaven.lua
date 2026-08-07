@@ -1,12 +1,7 @@
-local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+local Core = loadstring(game:HttpGet("https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/core.lua"))()
+local Window, WindUI = Core.Init("Brookhaven-RP")
 
-local Window = WindUI:CreateWindow({
-    Title = "RVX hub X Brookhaven-RP",
-    Icon = "rocket",
-    Theme = "Emerald",
-})
-
-local MainTab = Window:Tab({ Title = "Main", Icon = "home" })
+local MainTab = Window:Tab({ Title = "Main", Icon = "star" })
 
 MainTab:Section({ Title = "Interactive Elements", Desc = "Demonstration of new UI components" })
 
