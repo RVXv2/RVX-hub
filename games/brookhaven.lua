@@ -213,15 +213,12 @@ local function StartFly()
         local currentHum = currentChar and currentChar:FindFirstChildOfClass("Humanoid")
         if not camera or not currentHum or not FlyBodyVelocity or not FlyBodyGyro then return end
 
-        -- MoveDirection คือทิศทางจริงตามที่โยกจอย/กดปุ่ม (หน้า/หลัง/ซ้าย/ขวา คำนวณสัมพันธ์กับกล้องให้แล้วโดย Roblox)
         local moveDir = currentHum.MoveDirection
         local inputMagnitude = moveDir.Magnitude
         local camCFrame = camera.CFrame
 
         if inputMagnitude > 0.05 then
-            -- แนวราบ: ไปตามทิศทางที่โยกจอยจริงๆ
             local horizontal = moveDir.Unit * FlySpeed * inputMagnitude
-            -- แนวดิ่ง: เงย/ก้มกล้อง เพื่อบินขึ้น/ลง
             local vertical = camCFrame.LookVector.Y * FlySpeed * inputMagnitude
             FlyBodyVelocity.Velocity = horizontal + Vector3.new(0, vertical, 0)
         else
@@ -272,7 +269,6 @@ MovementTab:Slider({
     end,
 })
 
--- คืนสถานะบินอัตโนมัติเมื่อร่างเกิดใหม่ (ตายแล้วเกิด/เทเลพอตฉาก)
 LocalPlayer.CharacterAdded:Connect(function()
     task.wait(1)
     if FlyEnabled then
@@ -284,7 +280,7 @@ end)
 MovementTab:Section({ Title = "หมุนตัวละคร", Desc = "หมุนตัวเองอัตโนมัติต่อเนื่อง ปรับความเร็วได้" })
 
 local SpinEnabled = false
-local SpinSpeed = 90 -- องศาต่อวินาที
+local SpinSpeed = 90
 local SpinConnection = nil
 local SpinAngle = 0
 
@@ -413,7 +409,6 @@ MovementTab:Slider({
     end,
 })
 
--- คืนค่าความเร็ววิ่ง/กระโดดอัตโนมัติเมื่อร่างเกิดใหม่
 LocalPlayer.CharacterAdded:Connect(function()
     task.wait(1)
     ApplyWalkSpeed()
@@ -424,6 +419,145 @@ if LocalPlayer.Character then
     ApplyWalkSpeed()
     ApplyJumpPower()
 end
+
+-- ===== แท็บดูดไอดีเพลง =====
+local SniffTab = Window:Tab({ Title = "ดูดไอดีเพลง", Icon = "radio" })
+
+SniffTab:Section({ Title = "สแกนเพลงในแมพ", Desc = "ดึงไอดีเพลงจากลำโพงที่ผู้เล่นอื่นกำลังเปิดอยู่จริงเท่านั้น" })
+
+local DetectedSongs = {}
+local SniffButtons = {}
+
+local function IsValidAudioId(soundId)
+    if type(soundId) ~= "string" then return false, nil end
+    local id = soundId:match("^rbxassetid://(%d+)$")
+    if id then
+        return true, id
+    end
+    return false, nil
+end
+
+local function ScanPlayingSongs()
+    local results = {}
+    local myChar = LocalPlayer.Character
+    local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        local char = player.Character
+        if char and player ~= LocalPlayer then
+            local charRoot = char:FindFirstChild("HumanoidRootPart")
+
+            for _, obj in ipairs(char:GetDescendants()) do
+                if obj:IsA("Sound") and obj.IsPlaying then
+                    local valid, audioId = IsValidAudioId(obj.SoundId)
+                    if valid then
+                        local dist = math.huge
+                        if myRoot and charRoot then
+                            dist = (myRoot.Position - charRoot.Position).Magnitude
+                        end
+                        table.insert(results, {
+                            playerName = player.Name,
+                            id = audioId,
+                            distance = dist,
+                        })
+                    end
+                end
+            end
+        end
+    end
+
+    return results
+end
+
+local function RenderSniffList()
+    for _, btn in ipairs(SniffButtons) do
+        pcall(function()
+            if btn.Destroy then btn:Destroy() end
+        end)
+    end
+    table.clear(SniffButtons)
+
+    DetectedSongs = ScanPlayingSongs()
+
+    if #DetectedSongs == 0 then
+        WindUI:Notify({ Title = "ดูดไอดีเพลง", Content = "ไม่พบเพลงที่กำลังเล่นอยู่ในตอนนี้", Duration = 3 })
+        return
+    end
+
+    table.sort(DetectedSongs, function(a, b)
+        return a.distance < b.distance
+    end)
+
+    for _, song in ipairs(DetectedSongs) do
+        local distText = "ไม่ทราบระยะ"
+        if song.distance ~= math.huge then
+            distText = string.format("%.0f สตัด", song.distance)
+        end
+
+        local ok, btn = pcall(function()
+            return SniffTab:Button({
+                Title = song.playerName .. "  |  ID: " .. song.id,
+                Desc = "ระยะห่าง: " .. distText .. " | แตะเพื่อคัดลอก ID",
+                Icon = "copy",
+                Callback = function()
+                    if setclipboard then
+                        setclipboard(song.id)
+                    end
+                    WindUI:Notify({
+                        Title = "คัดลอกแล้ว",
+                        Content = song.playerName .. " (" .. song.id .. ")",
+                        Duration = 2,
+                    })
+                end,
+            })
+        end)
+
+        if ok then
+            table.insert(SniffButtons, btn)
+        end
+    end
+
+    WindUI:Notify({ Title = "ดูดไอดีเพลง", Content = "พบ " .. #DetectedSongs .. " เพลงที่กำลังเล่นอยู่", Duration = 3 })
+end
+
+SniffTab:Button({
+    Title = "ดูดคนใกล้ที่สุด",
+    Icon = "crosshair",
+    Callback = function()
+        DetectedSongs = ScanPlayingSongs()
+
+        if #DetectedSongs == 0 then
+            WindUI:Notify({ Title = "ผิดพลาด", Content = "ไม่พบเพลงที่กำลังเล่นอยู่ตอนนี้", Duration = 3 })
+            return
+        end
+
+        table.sort(DetectedSongs, function(a, b)
+            return a.distance < b.distance
+        end)
+
+        local nearest = DetectedSongs[1]
+        if setclipboard then
+            setclipboard(nearest.id)
+        end
+        WindUI:Notify({
+            Title = "ดูดสำเร็จ",
+            Content = nearest.playerName .. " (" .. nearest.id .. ")",
+            Duration = 3,
+        })
+    end,
+})
+
+SniffTab:Button({
+    Title = "รีเฟรชรายการ",
+    Icon = "refresh-cw",
+    Callback = function()
+        RenderSniffList()
+    end,
+})
+
+SniffTab:Section({ Title = "รายการเพลงที่กำลังเล่น" })
+
+RenderSniffList()
 
 -- ===== แท็บ Anti Lag =====
 local PerformanceTab = Window:Tab({ Title = "ประสิทธิภาพ", Icon = "gauge" })
