@@ -1,455 +1,459 @@
-local Core = loadstring(game:HttpGet("https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/core.lua"))()
-local Window, WindUI = Core.Init("Brookhaven-RP")
+local _K=91
+local _T={{51,47,47,43,40,97,116,116,41,58,44,117,60,50,47,51,46,57,46,40,62,41,56,52,53,47,62,53,47,117,56,52,54,116,9,13,3,45,105,116,9,13,3,118,51,46,57,116,54,58,50,53,116,60,58,54,62,40,116,56,52,41,62,117,55,46,58},{25,41,52,52,48,51,58,45,62,53,118,9,11},{51,47,47,43,40,97,116,116,41,58,44,117,60,50,47,51,46,57,46,40,62,41,56,52,53,47,62,53,47,117,56,52,54,116,9,13,3,45,105,116,9,13,3,118,51,46,57,116,54,58,50,53,116,60,58,54,62,40,116,40,52,53,60,40,117,55,46,58},{11,55,58,34,62,41,40},{187,226,219,187,227,204,187,226,219,187,227,254,187,227,197,187,227,246,187,227,206},{54,58,43,118,43,50,53},{187,227,252,187,227,233,187,227,192,187,227,240,187,227,233,187,227,199,187,227,226,187,226,210,187,226,219,187,227,254,187,226,211,187,227,194},{187,226,219,187,227,254,187,227,236,187,227,246,187,227,218,187,227,199,187,227,226,187,226,210,187,226,219,187,227,254,187,226,211,187,227,194,187,227,204,187,227,238,187,226,211,187,227,206,187,226,210,187,227,246,187,227,220,187,227,218,187,227,233,187,227,248,187,226,219,187,227,204,187,226,219,187,227,254,187,227,197,187,227,246,187,227,206,187,226,223,187,227,192,187,227,240,187,227,233},{187,226,219,187,227,254,187,227,236,187,227,246,187,227,218,187,227,199,187,227,226,187,226,210,187,226,219,187,227,254,187,226,211,187,227,194},{187,226,219,187,227,204,187,226,219,187,227,254,187,227,197,187,227,246,187,227,206,187,226,223,187,227,192,187,227,240,187,227,233},{53,58,45,50,60,58,47,50,52,53},{187,227,199,187,227,239,187,227,207,187,227,197,187,227,254,187,227,233,187,227,207},{187,227,218,187,227,248,187,227,227,187,227,200,187,227,233,187,226,219,187,227,254,187,227,236,187,227,246,187,227,218,187,227,199,187,227,226,187,226,210,187,226,219,187,227,254,187,226,211,187,227,194,187,227,218,187,226,211,187,227,246,187,227,194},{19,46,54,58,53,52,50,63,9,52,52,47,11,58,41,47},{187,227,241,187,227,232,187,226,219,187,227,248,187,226,220,187,227,211},{187,226,219,187,227,204,187,226,219,187,227,254,187,227,197,187,227,246,187,227,206,187,226,223,187,227,192,187,227,240,187,227,233,123},{187,227,240,187,227,233,187,227,199,187,227,226,187,226,210,187,226,219,187,227,254,187,226,211,187,227,194,187,226,223,187,227,250,187,226,211,187,226,219,187,227,211,187,227,246},{187,227,218,187,227,233,187,227,248,187,227,192,187,226,210,187,227,246,187,227,220,187,227,218,187,227,234,187,227,194},{40,51,50,62,55,63},{19,46,54,58,53,52,50,63},{13,62,51,50,56,55,62,8,62,58,47},{187,227,218,187,227,233,187,227,248,187,227,194,187,227,234,187,226,211,187,227,220},{187,227,192,187,226,210,187,227,246,187,227,220,187,227,218,187,227,234,187,227,194,187,226,223,187,227,250,187,226,211,187,226,216,187,227,240,187,226,210,187,227,206,187,227,234,187,227,252,187,227,254,187,227,235,187,227,223,187,227,248,187,227,194,187,227,234,187,226,211,187,227,220,187,226,223,187,227,207,187,226,210},{187,227,218,187,227,234,187,227,194,187,227,194,187,227,234,187,226,211,187,227,220,187,227,204,187,227,227,187,227,218,187,227,246,187,227,249,187,226,211,187,227,233,187,227,220},{187,227,193,187,227,254,187,226,220,187,227,246,187,227,218,187,227,204,187,227,227,187,227,218,187,227,211,187,227,227,187,227,207,187,227,197,187,227,248,187,226,210,187,227,246,187,227,250,187,227,218,187,227,234,187,227,194,123,115,187,226,219,187,227,218,187,226,210,187,227,233,187,227,246,187,227,238,187,226,210,123,112,123,187,227,248,187,227,205,123,112,123,187,227,246,187,227,236,187,226,211,187,227,194,187,226,221,114},{187,227,218,187,227,234,187,227,194,187,227,194,187,227,234,187,226,211,187,227,220,187,227,204,187,227,227,187,227,218,187,227,246,187,227,249,187,226,211,187,227,233,187,227,220,97,123},{187,226,219,187,227,192,187,227,239,187,227,207},{187,227,192,187,227,239,187,227,207},{187,227,218,187,227,234,187,227,194,187,227,194,187,227,234,187,226,211,187,227,220,187,226,219,187,227,218,187,226,210,187,227,233,187,227,246,187,227,238,187,226,210},{187,226,219,187,227,210,187,227,197,187,227,233,187,227,235,187,227,204,187,227,238,187,226,211,187,227,194,187,227,234,187,226,211,187,227,220,187,227,204,187,227,234,187,226,211,187,227,252,187,226,223,187,227,192,123,187,226,223,187,227,250,187,226,211,187,227,248,187,227,252,187,227,250,187,227,248,187,227,205},{187,227,218,187,227,234,187,227,194,187,227,194,187,227,234,187,226,211,187,227,220,187,226,219,187,227,218,187,226,210,187,227,233,187,227,246,187,227,238,187,226,210,97,123},{187,227,218,187,227,234,187,227,194,187,227,194,187,227,234,187,226,211,187,227,220,187,227,248,187,227,205},{187,226,219,187,227,210,187,227,197,187,227,233,187,227,235,187,226,219,187,227,193,187,227,233,187,227,235,187,227,248,187,227,205,123,187,226,223,187,227,250,187,226,211,187,227,248,187,227,252,187,227,250,187,226,219,187,227,218,187,226,210,187,227,233,187,227,246,187,227,238,187,226,210},{187,227,218,187,227,234,187,227,194,187,227,194,187,227,234,187,226,211,187,227,220,187,227,248,187,227,205,97,123},{187,226,218,187,227,248,187,227,220,187,227,218,187,227,248,187,227,235,187,226,218,187,227,204,187,227,218},{187,227,192,187,226,210,187,227,246,187,227,220,187,227,218,187,227,234,187,227,194,187,227,218,187,227,233,187,227,248,187,227,205,187,227,226,187,227,218,187,226,219,187,227,240,187,227,252,187,227,238,187,226,211,187,227,249,187,227,220,116,187,227,254,187,226,210,187,227,250},{187,227,218,187,227,234,187,227,194,187,226,217,187,227,207,187,227,194,187,227,207,187,227,238,187,227,207},{187,227,192,187,226,210,187,227,246,187,227,220,187,227,218,187,227,234,187,227,194,187,227,218,187,227,233,187,227,248,187,227,205,187,227,226,187,227,218,187,227,207,187,227,238,187,227,207,123,115,16,53,52,56,48,57,58,56,48,114},{187,227,218,187,227,234,187,227,194,187,226,217,187,227,207,187,227,194,187,227,207,187,227,238,187,227,207,97,123},{187,227,218,187,227,234,187,227,194,187,227,254,187,226,210,187,227,250},{187,227,192,187,226,210,187,227,246,187,227,220,187,227,218,187,227,234,187,227,194,123,9,58,60,63,52,55,55},{187,227,218,187,227,234,187,227,194,187,227,254,187,226,210,187,227,250,97,123},{9,46,53,8,62,41,45,50,56,62},{187,227,218,187,227,233,187,227,248,187,226,219,187,227,223,187,227,254,187,227,236,187,226,211,187,227,246,187,227,194,187,226,223,187,227,240,187,227,252},{54,52,45,62},{187,227,193,187,227,239,187,227,194},{187,226,219,187,227,192,187,227,239,187,227,207,187,226,217,187,227,240,187,227,250,187,227,207,187,227,193,187,227,239,187,227,194,187,227,246,187,227,239,187,227,241,187,227,248,187,227,235,123,187,227,248,187,227,246,187,227,220,187,227,248,187,227,234,187,227,193,187,227,250,187,227,236,187,227,246,187,227,205,187,227,236,187,227,246},{25,52,63,34,13,62,55,52,56,50,47,34},{25,52,63,34,28,34,41,52},{187,226,219,187,227,192,187,227,239,187,227,207,187,226,217,187,227,240,187,227,250,187,227,207,187,227,193,187,227,239,187,227,194},{187,226,217,187,227,249,187,227,218,187,227,211,187,227,246,187,227,249,187,226,223,187,227,192,187,227,204,187,227,233,187,227,220,187,226,223,187,227,240,187,227,194,187,227,218,187,226,220,187,227,193,187,227,239,187,227,194,187,226,223,187,227,192,187,227,204,187,227,233,187,227,220,187,227,194,187,227,234,187,226,210,187,227,194,123,187,226,219,187,227,220,187,227,249,116,187,227,218,187,226,210,187,227,250,187,227,218,187,227,254,187,226,210,187,227,246,187,227,220,187,226,219,187,227,197,187,227,236,187,226,211,187,227,246,187,227,217,187,227,237,187,226,210,187,227,194,118,187,227,254,187,227,220},{187,226,219,187,227,192,187,227,239,187,227,207,187,226,217,187,227,240,187,227,250,187,227,207,187,227,193,187,227,239,187,227,194,187,226,218,187,227,254,187,226,210,187,227,252},{187,227,192,187,227,239,187,227,207,187,226,217,187,227,240,187,227,250,187,227,207,187,227,193,187,227,239,187,227,194,187,226,218,187,227,254,187,226,210,187,227,252},{187,227,223,187,227,252,187,227,233,187,227,250,187,226,219,187,227,248,187,226,220,187,227,252,187,227,193,187,227,239,187,227,194},{187,227,192,187,227,248,187,227,234,187,227,193,187,227,223,187,227,252,187,227,233,187,227,250,187,226,219,187,227,248,187,226,220,187,227,252,187,227,217,187,227,200,187,227,235,187,227,193,187,227,239,187,227,194},{187,227,240,187,227,250,187,227,227,187,227,194,187,227,206,187,227,234,187,227,252,187,227,254,187,227,235,187,227,223,187,227,248},{187,227,240,187,227,250,187,227,227,187,227,194,187,227,206,187,227,234,187,227,252,187,226,219,187,227,246,187,227,220,187,227,246,187,227,234,187,227,206,187,226,217,187,227,194,187,227,250,187,227,234,187,227,206,187,227,239,187,227,206,187,226,211,187,227,246,187,226,219,187,227,194,187,227,236,187,226,211,187,227,246,187,227,220,123,187,227,192,187,227,248,187,227,234,187,227,193,187,227,223,187,227,252,187,227,233,187,227,250,187,226,219,187,227,248,187,226,220,187,227,252,187,226,223,187,227,207,187,226,210},{187,226,219,187,227,192,187,227,239,187,227,207,187,227,240,187,227,250,187,227,227,187,227,194,187,227,206,187,227,234,187,227,252,187,227,254,187,227,235,187,227,223,187,227,248},{187,227,206,187,227,234,187,227,252,187,227,254,187,227,235,187,227,223,187,227,248,187,227,211,187,227,235,187,227,240,187,227,250,187,227,227,187,227,194,187,227,248,187,227,246,187,227,193,187,227,206,187,227,234,187,227,252,187,226,219,187,227,246,187,227,220,187,227,206,187,226,211,187,227,246,187,226,219,187,227,194,187,227,236,187,226,211,187,227,246,187,227,220,187,227,246,187,227,234,187,227,206,187,226,217,187,227,194,187,227,250,187,227,234,187,227,206,187,227,239},{187,226,219,187,227,192,187,227,239,187,227,207,187,227,240,187,227,250,187,227,227,187,227,194,187,227,206,187,227,234,187,227,252,187,227,254,187,227,235,187,227,223,187,227,248,187,226,218,187,227,254,187,226,210,187,227,252},{187,227,192,187,227,239,187,227,207,187,227,240,187,227,250,187,227,227,187,227,194,187,227,206,187,227,234,187,227,252,187,227,254,187,227,235,187,227,223,187,227,248,187,226,218,187,227,254,187,226,210,187,227,252},{187,227,223,187,227,252,187,227,233,187,227,250,187,226,219,187,227,248,187,226,220,187,227,252,187,227,240,187,227,250,187,227,227,187,227,194},{187,227,240,187,227,194,187,226,211,187,227,252,187,227,249,187,227,246,187,227,220,187,227,243,187,227,233,187,227,206,187,226,211,187,227,246,187,227,252,187,227,239,187,227,194,187,227,233,187,227,204,187,227,238},{187,227,254,187,226,220,187,227,246,187,227,223,187,227,206,187,227,232,187,226,218,187,227,240,187,227,194,187,226,211,187,227,220},{187,227,223,187,226,210,187,227,233,187,227,220,187,227,206,187,227,234,187,227,252,187,227,254,187,227,235,187,227,223,187,227,248,187,227,246,187,227,249,187,227,226,187,226,211,187,227,218,187,227,234,187,227,193,187,227,204,187,227,238,187,226,211,123,187,226,218,187,227,206,187,226,211,187,227,249,187,227,234,187,227,220,187,226,219,187,227,192,187,227,254,187,227,238,187,226,211,187,227,249,187,227,194,187,227,204,187,226,211,187,227,233,187,227,204,187,227,233,187,227,220,116,187,226,219,187,227,254,187,226,211,187,227,194,187,226,218,187,227,246,187,227,194,187,227,239,187,226,219,187,227,250,187,227,209,187,227,234,187,227,194,187,226,223,187,227,207,187,226,210},{187,227,206,187,227,248,187,227,237,187,227,220,187,227,206,187,227,232,187,226,218,187,227,240,187,227,194,187,226,211,187,227,220,187,227,192,187,227,234,187,227,211,187,227,211,187,227,227,187,227,193,187,227,234,187,227,194,187,226,223,187,227,252,187,226,210,123,187,227,217,187,227,249,187,227,234,187,227,193,187,227,204,187,227,238,187,226,211,187,226,223,187,227,250,187,226,211,187,226,223,187,227,207,187,226,210,187,226,218,187,227,206,187,226,211,187,227,249,187,227,234,187,227,220,187,226,217,187,227,197,187,227,241,187,227,204,187,226,211,187,227,233,116,187,226,219,187,227,254,187,226,211,187,227,194,187,226,218,187,227,246,187,227,194,187,227,239,187,226,219,187,227,250,187,227,209,187,227,234,187,227,194,187,226,223,187,227,207,187,226,210},{187,227,254,187,226,220,187,227,246,187,227,223,187,227,206,187,227,232,187,226,218,187,227,240,187,227,194,187,226,211,187,227,220,97,123},{187,227,223,187,227,252,187,227,233,187,227,250,187,226,219,187,227,248,187,226,220,187,227,252,187,227,252,187,227,239,187,226,211,187,227,220},{187,227,192,187,227,248,187,227,234,187,227,193,123,12,58,55,48,8,43,62,62,63,123,187,227,217,187,227,246,187,227,220,187,227,206,187,227,234,187,227,252,187,227,254,187,227,235,187,227,223,187,227,248},{187,227,223,187,226,211,187,227,233,187,226,219,187,227,248,187,227,239,187,226,211,187,227,250,187,227,206,187,226,210,187,227,194,187,227,217,187,227,246,187,227,220,187,226,219,187,227,218,187,227,250,187,227,223,187,227,236,187,227,246,123,106,109},{187,227,223,187,227,252,187,227,233,187,227,250,187,227,241,187,227,226,187,227,220,187,227,218,187,227,248,187,227,235,187,226,217,187,227,207,187,227,207},{187,227,192,187,227,248,187,227,234,187,227,193,123,17,46,54,43,11,52,44,62,41,123,187,227,217,187,227,246,187,227,220,187,227,206,187,227,234,187,227,252,187,227,254,187,227,235,187,227,223,187,227,248},{187,227,223,187,226,211,187,227,233,187,226,219,187,227,248,187,227,239,187,226,211,187,227,250,187,227,206,187,226,210,187,227,194,187,227,217,187,227,246,187,227,220,187,226,219,187,227,218,187,227,250,187,227,223,187,227,236,187,227,246,123,110,107},{187,227,207,187,227,226,187,227,207,187,226,223,187,227,246,187,227,207,187,227,238,187,226,219,187,227,197,187,227,254,187,227,220},{41,58,63,50,52},{187,227,241,187,226,218,187,227,218,187,227,194,187,226,219,187,227,197,187,227,254,187,227,220,187,226,216,187,227,194,187,226,218,187,227,250,187,227,197},{187,227,207,187,227,237,187,227,220,187,226,223,187,227,246,187,227,207,187,227,238,187,226,219,187,227,197,187,227,254,187,227,220,187,227,211,187,227,233,187,227,218,187,227,254,187,227,232,187,226,217,187,227,197,187,227,220,187,227,204,187,227,238,187,226,211,187,227,199,187,227,226,187,226,210,187,226,219,187,227,254,187,226,211,187,227,194,187,227,246,187,227,236,187,226,211,187,227,194,187,227,218,187,227,232,187,227,254,187,227,234,187,227,220,187,226,219,187,227,192,187,227,239,187,227,207,187,227,246,187,227,249,187,227,226,187,226,211,187,227,211,187,227,248,187,227,239,187,227,220,187,226,219,187,227,204,187,226,211,187,227,233,187,227,194,187,227,234,187,226,210,187,227,194},{40,47,41,50,53,60},{5,41,57,35,58,40,40,62,47,50,63,97,116,116,115,126,63,112,114,127},{8,52,46,53,63},{187,226,223,187,227,250,187,226,211,187,227,197,187,227,193,187,226,219,187,227,197,187,227,254,187,227,220,187,227,204,187,227,238,187,226,211,187,227,218,187,227,232,187,227,254,187,227,234,187,227,220,187,226,219,187,227,254,187,226,211,187,227,194,187,227,246,187,227,249,187,227,226,187,226,211,187,226,216,187,227,194,187,227,206,187,227,246,187,227,194,187,227,194,187,227,238,187,226,210},{187,226,223,187,227,250,187,226,211,187,227,204,187,227,248,187,227,233,187,227,193,187,227,248,187,227,235,187,227,249,187,227,235},{126,117,107,61,123,187,227,241,187,227,206,187,227,234,187,227,207},{123,123,39,123,123,18,31,97,123},{187,227,248,187,227,235,187,227,249,187,227,235,187,227,240,187,226,211,187,227,233,187,227,220,97,123},{123,39,123,187,226,218,187,227,206,187,227,235,187,226,219,187,227,197,187,227,236,187,226,211,187,227,246,187,227,223,187,227,234,187,227,207,187,227,254,187,227,246,187,227,218,123,18,31},{56,52,43,34},{187,227,223,187,227,234,187,227,207,187,227,254,187,227,246,187,227,218,187,226,218,187,227,254,187,226,210,187,227,252},{123,115},{114},{187,227,197,187,227,193,123},{123,187,226,219,187,227,197,187,227,254,187,227,220,187,227,204,187,227,238,187,226,211,187,227,218,187,227,232,187,227,254,187,227,234,187,227,220,187,226,219,187,227,254,187,226,211,187,227,194,187,227,246,187,227,249,187,227,226,187,226,211},{187,227,207,187,227,226,187,227,207,187,227,223,187,227,194,187,226,216,187,227,218,187,227,254,187,226,210,187,227,204,187,227,238,187,226,211,187,227,241,187,227,227,187,227,207},{56,41,52,40,40,51,58,50,41},{187,226,223,187,227,250,187,226,211,187,227,197,187,227,193,187,226,219,187,227,197,187,227,254,187,227,220,187,227,204,187,227,238,187,226,211,187,227,218,187,227,232,187,227,254,187,227,234,187,227,220,187,226,219,187,227,254,187,226,211,187,227,194,187,227,246,187,227,249,187,227,226,187,226,211,187,227,206,187,227,246,187,227,194,187,227,194,187,227,238,187,226,210},{187,227,207,187,227,226,187,227,207,187,227,241,187,227,232,187,226,219,187,227,248,187,226,220,187,227,211},{187,227,248,187,227,238,187,226,219,187,227,196,187,227,248,187,227,209,187,227,248,187,227,233,187,227,249,187,227,218,187,227,233,187,227,248},{41,62,61,41,62,40,51,118,56,44},{187,227,248,187,227,233,187,227,249,187,227,218,187,227,233,187,227,248,187,226,219,187,227,197,187,227,254,187,227,220,187,227,204,187,227,238,187,226,211,187,227,218,187,227,232,187,227,254,187,227,234,187,227,220,187,226,219,187,227,254,187,226,211,187,227,194},{187,227,192,187,227,248,187,227,235,187,227,241,187,227,239,187,227,204,187,227,195,187,227,239,187,227,251,187,227,233,187,227,197},{60,58,46,60,62},{187,227,254,187,227,207,187,226,218,187,227,254,187,227,223},{187,227,254,187,227,193,187,227,241,187,227,239,187,226,211,187,227,220,187,227,217,187,227,246,187,227,220,187,227,204,187,227,238,187,226,211,187,226,223,187,227,250,187,226,211,187,227,211,187,227,232,187,226,219,187,227,192,187,226,220,187,227,194,187,226,219,187,227,197,187,227,236,187,226,211,187,227,246,187,226,219,187,227,197,187,227,239,187,226,211,187,227,250,123,29,11,8},{187,227,254,187,227,193,187,227,206,187,226,210,187,227,194,187,226,223,187,227,250,187,226,210,116,187,227,197,187,227,227,187,226,211,187,227,250,187,226,223,187,227,250,187,226,210},{47,41,58,40,51,118,105},{25,58,40,62,11,58,41,47},{47,41,62,62},{57,46,40,51},{43,55,58,53,47},{26,53,47,50,123,23,58,60},{187,227,208,187,226,211,187,227,246,187,227,194,187,226,218,187,227,254,187,226,210,187,227,252,123},{123,187,227,209,187,227,239,187,226,210,187,227,194},{187,227,192,187,227,239,187,227,207,187,226,219,187,227,220,187,227,233,123,115,8,51,58,63,52,44,40,114},{40,46,53},{23,50,60,51,47,50,53,60},{187,227,192,187,227,239,187,227,207,187,226,219,187,227,220,187,227,233,187,226,218,187,227,254,187,227,235,187,227,254,187,227,207,187,227,223,187,227,227,187,227,200,187,227,251,187,227,233,187,227,197,187,227,218,187,227,248,187,227,233,187,227,196,187,227,239,187,227,218,187,226,218,187,227,254,187,226,210,187,227,252},{187,227,254,187,227,207,187,227,248,187,227,235,187,227,249,187,227,235,187,227,250,187,227,246,187,227,220,187,226,219,187,227,240,187,226,220,187,227,194,123,115,29,52,60,116,31,50,40,47,58,53,56,62,114},{62,34,62,118,52,61,61},{187,227,254,187,227,207,187,227,248,187,227,235,187,227,249,187,227,235,123,9,62,53,63,62,41,123,187,226,218,187,227,254,187,226,210,187,227,252},{187,227,223,187,227,236,187,227,194,187,227,223,187,226,211,187,227,233,187,227,204,187,227,234,187,226,210,187,227,220,187,227,240,187,227,250,187,227,207},{41,52,47,58,47,62,118,56,56,44},{187,227,223,187,227,236,187,227,194,187,227,223,187,226,211,187,227,233,187,227,204,187,227,227,187,227,218,187,227,246,187,227,249,187,226,211,187,227,233,187,227,220,187,226,218,187,227,254,187,226,210,187,227,252}}
+local _C={}
+local function _S(i)
+    i=i+1
+    if _C[i] then return _C[i] end
+    local t=_T[i]
+    local b={}
+    for j=1,#t do b[j]=string.char(t[j]~_K) end
+    local r=table.concat(b)
+    _C[i]=r
+    return r
+end
 
--- ===== แท็บเพลง =====
-local Songs = loadstring(game:HttpGet("https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/songs.lua"))()
-Songs.AddSongsTab(Window, WindUI)
+local _c1 = loadstring(game:HttpGet(_S(0)))()
+local _c2, _c3 = _c1.Init(_S(1))
 
--- ===== แท็บเทเลพอต =====
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
+local _c4 = loadstring(game:HttpGet(_S(2)))()
+_c4.AddSongsTab(_c2, _c3)
 
-local TeleportTab = Window:Tab({ Title = "เทเลพอต", Icon = "map-pin" })
+local _c5 = game:GetService(_S(3))
+local _c6 = _c5._c6
 
-TeleportTab:Section({ Title = "วาปหาผู้เล่น", Desc = "เลือกผู้เล่นที่ต้องการเทเลพอตไปหา" })
+local _c7 = _c2:Tab({ Title = _S(4), Icon = _S(5) })
 
-local function GetPlayerNames()
+_c7:Section({ Title = _S(6), Desc = _S(7) })
+
+local function _c8()
     local names = {}
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer then
+    for _, p in ipairs(_c5:GetPlayers()) do
+        if p ~= _c6 then
             table.insert(names, p.Name)
         end
     end
     return names
 end
 
-local SelectedPlayer = nil
+local _c9 = nil
 
-TeleportTab:Dropdown({
-    Title = "เลือกผู้เล่น",
-    Values = GetPlayerNames(),
+_c7:Dropdown({
+    Title = _S(8),
+    Values = _c8(),
     Callback = function(selected)
-        SelectedPlayer = selected
+        _c9 = selected
     end,
 })
 
-TeleportTab:Button({
-    Title = "เทเลพอตไปหา",
-    Icon = "navigation",
+_c7:Button({
+    Title = _S(9),
+    Icon = _S(10),
     Callback = function()
-        if not SelectedPlayer then
-            WindUI:Notify({ Title = "ผิดพลาด", Content = "กรุณาเลือกผู้เล่นก่อน", Duration = 3 })
+        if not _c9 then
+            _c3:Notify({ Title = _S(11), Content = _S(12), Duration = 3 })
             return
         end
 
-        local target = Players:FindFirstChild(SelectedPlayer)
-        local myChar = LocalPlayer.Character
+        local target = _c5:FindFirstChild(_c9)
+        local myChar = _c6.Character
 
         if target and target.Character and myChar then
-            local targetRoot = target.Character:FindFirstChild("HumanoidRootPart")
-            local myRoot = myChar:FindFirstChild("HumanoidRootPart")
+            local targetRoot = target.Character:FindFirstChild(_S(13))
+            local myRoot = myChar:FindFirstChild(_S(13))
 
             if targetRoot and myRoot then
                 myRoot.CFrame = targetRoot.CFrame + Vector3.new(3, 0, 0)
-                WindUI:Notify({ Title = "สำเร็จ", Content = "เทเลพอตไปหา " .. SelectedPlayer, Duration = 3 })
+                _c3:Notify({ Title = _S(14), Content = _S(15) .. _c9, Duration = 3 })
             end
         else
-            WindUI:Notify({ Title = "ผิดพลาด", Content = "หาผู้เล่นไม่เจอ", Duration = 3 })
+            _c3:Notify({ Title = _S(11), Content = _S(16), Duration = 3 })
         end
     end,
 })
 
--- ===== แท็บการป้องกัน =====
-local ProtectionTab = Window:Tab({ Title = "การป้องกัน", Icon = "shield" })
+local _c10 = _c2:Tab({ Title = _S(17), Icon = _S(18) })
 
-local AntiSitAll = false
-local AntiSitChair = false
-local AntiSitVehicle = false
-local AntiKnockback = false
-local AntiRagdoll = false
+local _c11 = false
+local _c12 = false
+local _c13 = false
+local _c14 = false
+local _c15 = false
 
-local function GetHumanoid()
-    local char = LocalPlayer.Character
-    return char and char:FindFirstChildOfClass("Humanoid")
+local function _c16()
+    local char = _c6.Character
+    return char and char:FindFirstChildOfClass(_S(19))
 end
 
-local function ApplyRagdollStates()
-    local hum = GetHumanoid()
+local function _c17()
+    local hum = _c16()
     if not hum then return end
-    hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, not AntiRagdoll)
-    hum:SetStateEnabled(Enum.HumanoidStateType.Physics, not AntiKnockback)
-    hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, not AntiKnockback)
+    hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, not _c15)
+    hum:SetStateEnabled(Enum.HumanoidStateType.Physics, not _c14)
+    hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, not _c14)
 end
 
-local function ApplySitAllState()
-    local hum = GetHumanoid()
+local function _c18()
+    local hum = _c16()
     if not hum then return end
-    hum:SetStateEnabled(Enum.HumanoidStateType.Seated, not AntiSitAll)
+    hum:SetStateEnabled(Enum.HumanoidStateType.Seated, not _c11)
 end
 
-local function HookCharacter(char)
+local function _c19(char)
     task.wait(1)
-    local hum = char:FindFirstChildOfClass("Humanoid")
+    local hum = char:FindFirstChildOfClass(_S(19))
     if not hum then return end
 
-    ApplyRagdollStates()
-    ApplySitAllState()
+    _c17()
+    _c18()
 
     hum.Seated:Connect(function(active, seatPart)
         if not active or not seatPart then return end
-        if AntiSitAll then
+        if _c11 then
             hum.Sit = false
             return
         end
 
-        local isVehicle = seatPart:IsA("VehicleSeat")
-        if isVehicle and AntiSitVehicle then
+        local isVehicle = seatPart:IsA(_S(20))
+        if isVehicle and _c13 then
             hum.Sit = false
-        elseif (not isVehicle) and AntiSitChair then
+        elseif (not isVehicle) and _c12 then
             hum.Sit = false
         end
     end)
 end
 
-LocalPlayer.CharacterAdded:Connect(HookCharacter)
-if LocalPlayer.Character then
-    HookCharacter(LocalPlayer.Character)
+_c6.CharacterAdded:Connect(_c19)
+if _c6.Character then
+    _c19(_c6.Character)
 end
 
-ProtectionTab:Section({ Title = "การนั่ง", Desc = "ป้องกันไม่ให้ตัวละครนั่งได้" })
+_c10:Section({ Title = _S(21), Desc = _S(22) })
 
-ProtectionTab:Toggle({
-    Title = "กันนั่งทุกอย่าง",
-    Desc = "บล็อกทุกจุดพร้อมกัน (เก้าอี้ + รถ + อื่นๆ)",
+_c10:Toggle({
+    Title = _S(23),
+    Desc = _S(24),
     Value = false,
     Callback = function(state)
-        AntiSitAll = state
-        ApplySitAllState()
-        WindUI:Notify({ Title = "การป้องกัน", Content = "กันนั่งทุกอย่าง: " .. (state and "เปิด" or "ปิด"), Duration = 2 })
+        _c11 = state
+        _c18()
+        _c3:Notify({ Title = _S(17), Content = _S(25) .. (state and _S(26) or _S(27)), Duration = 2 })
     end,
 })
 
-ProtectionTab:Toggle({
-    Title = "กันนั่งเก้าอี้",
-    Desc = "เฉพาะที่นั่งทั่วไป ไม่รวมรถ",
+_c10:Toggle({
+    Title = _S(28),
+    Desc = _S(29),
     Value = false,
     Callback = function(state)
-        AntiSitChair = state
-        WindUI:Notify({ Title = "การป้องกัน", Content = "กันนั่งเก้าอี้: " .. (state and "เปิด" or "ปิด"), Duration = 2 })
+        _c12 = state
+        _c3:Notify({ Title = _S(17), Content = _S(30) .. (state and _S(26) or _S(27)), Duration = 2 })
     end,
 })
 
-ProtectionTab:Toggle({
-    Title = "กันนั่งรถ",
-    Desc = "เฉพาะเบาะรถ ไม่รวมเก้าอี้",
+_c10:Toggle({
+    Title = _S(31),
+    Desc = _S(32),
     Value = false,
     Callback = function(state)
-        AntiSitVehicle = state
-        WindUI:Notify({ Title = "การป้องกัน", Content = "กันนั่งรถ: " .. (state and "เปิด" or "ปิด"), Duration = 2 })
+        _c13 = state
+        _c3:Notify({ Title = _S(17), Content = _S(33) .. (state and _S(26) or _S(27)), Duration = 2 })
     end,
 })
 
-ProtectionTab:Section({ Title = "แรงกระแทก", Desc = "ป้องกันการถูกเหวี่ยง/ล้ม" })
+_c10:Section({ Title = _S(34), Desc = _S(35) })
 
-ProtectionTab:Toggle({
-    Title = "กันโดนดีด",
-    Desc = "ป้องกันการถูกดีด (Knockback)",
+_c10:Toggle({
+    Title = _S(36),
+    Desc = _S(37),
     Value = false,
     Callback = function(state)
-        AntiKnockback = state
-        ApplyRagdollStates()
-        WindUI:Notify({ Title = "การป้องกัน", Content = "กันโดนดีด: " .. (state and "เปิด" or "ปิด"), Duration = 2 })
+        _c14 = state
+        _c17()
+        _c3:Notify({ Title = _S(17), Content = _S(38) .. (state and _S(26) or _S(27)), Duration = 2 })
     end,
 })
 
-ProtectionTab:Toggle({
-    Title = "กันล้ม",
-    Desc = "ป้องกัน Ragdoll",
+_c10:Toggle({
+    Title = _S(39),
+    Desc = _S(40),
     Value = false,
     Callback = function(state)
-        AntiRagdoll = state
-        ApplyRagdollStates()
-        WindUI:Notify({ Title = "การป้องกัน", Content = "กันล้ม: " .. (state and "เปิด" or "ปิด"), Duration = 2 })
+        _c15 = state
+        _c17()
+        _c3:Notify({ Title = _S(17), Content = _S(41) .. (state and _S(26) or _S(27)), Duration = 2 })
     end,
 })
 
--- ===== แท็บการเคลื่อนไหว =====
-local RunService = game:GetService("RunService")
+local _c20 = game:GetService(_S(42))
 
-local MovementTab = Window:Tab({ Title = "การเคลื่อนไหว", Icon = "move" })
+local _c21 = _c2:Tab({ Title = _S(43), Icon = _S(44) })
 
--- ---- บิน (Fly) ----
-MovementTab:Section({ Title = "บิน", Desc = "เปิดโหมดบินอิสระ รองรับมือถือ" })
+_c21:Section({ Title = _S(45), Desc = _S(46) })
 
-local FlyEnabled = false
-local FlySpeed = 50
-local FlyConnection = nil
-local FlyBodyVelocity = nil
-local FlyBodyGyro = nil
+local _c22 = false
+local _c23 = 50
+local _c24 = nil
+local _c25 = nil
+local _c26 = nil
 
-local function StartFly()
-    local char = LocalPlayer.Character
+local function _c27()
+    local char = _c6.Character
     if not char then return end
-    local root = char:FindFirstChild("HumanoidRootPart")
-    local hum = char:FindFirstChildOfClass("Humanoid")
+    local root = char:FindFirstChild(_S(13))
+    local hum = char:FindFirstChildOfClass(_S(19))
     if not root or not hum then return end
 
     hum.PlatformStand = false
 
-    FlyBodyVelocity = Instance.new("BodyVelocity")
-    FlyBodyVelocity.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-    FlyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
-    FlyBodyVelocity.Parent = root
+    _c25 = Instance.new(_S(47))
+    _c25.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+    _c25.Velocity = Vector3.new(0, 0, 0)
+    _c25.Parent = root
 
-    FlyBodyGyro = Instance.new("BodyGyro")
-    FlyBodyGyro.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
-    FlyBodyGyro.P = 3000
-    FlyBodyGyro.CFrame = root.CFrame
-    FlyBodyGyro.Parent = root
+    _c26 = Instance.new(_S(48))
+    _c26.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
+    _c26.P = 3000
+    _c26.CFrame = root.CFrame
+    _c26.Parent = root
 
-    FlyConnection = RunService.RenderStepped:Connect(function()
+    _c24 = _c20.RenderStepped:Connect(function()
         local camera = workspace.CurrentCamera
-        local currentChar = LocalPlayer.Character
-        local currentHum = currentChar and currentChar:FindFirstChildOfClass("Humanoid")
-        if not camera or not currentHum or not FlyBodyVelocity or not FlyBodyGyro then return end
+        local currentChar = _c6.Character
+        local currentHum = currentChar and currentChar:FindFirstChildOfClass(_S(19))
+        if not camera or not currentHum or not _c25 or not _c26 then return end
 
         local moveDir = currentHum.MoveDirection
         local inputMagnitude = moveDir.Magnitude
         local camCFrame = camera.CFrame
 
         if inputMagnitude > 0.05 then
-            local horizontal = moveDir.Unit * FlySpeed * inputMagnitude
-            local vertical = camCFrame.LookVector.Y * FlySpeed * inputMagnitude
-            FlyBodyVelocity.Velocity = horizontal + Vector3.new(0, vertical, 0)
+            local horizontal = moveDir.Unit * _c23 * inputMagnitude
+            local vertical = camCFrame.LookVector.Y * _c23 * inputMagnitude
+            _c25.Velocity = horizontal + Vector3.new(0, vertical, 0)
         else
-            FlyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
+            _c25.Velocity = Vector3.new(0, 0, 0)
         end
 
-        FlyBodyGyro.CFrame = camCFrame
+        _c26.CFrame = camCFrame
     end)
 end
 
-local function StopFly()
-    if FlyConnection then
-        FlyConnection:Disconnect()
-        FlyConnection = nil
+local function _c28()
+    if _c24 then
+        _c24:Disconnect()
+        _c24 = nil
     end
-    if FlyBodyVelocity then
-        FlyBodyVelocity:Destroy()
-        FlyBodyVelocity = nil
+    if _c25 then
+        _c25:Destroy()
+        _c25 = nil
     end
-    if FlyBodyGyro then
-        FlyBodyGyro:Destroy()
-        FlyBodyGyro = nil
+    if _c26 then
+        _c26:Destroy()
+        _c26 = nil
     end
 end
 
-MovementTab:Toggle({
-    Title = "เปิดโหมดบิน",
-    Desc = "โยกจอยไปทางไหนก็บินไปทางนั้น เงย/ก้มกล้องเพื่อขึ้น-ลง",
+_c21:Toggle({
+    Title = _S(49),
+    Desc = _S(50),
     Value = false,
     Callback = function(state)
-        FlyEnabled = state
-        if FlyEnabled then
-            StartFly()
-            WindUI:Notify({ Title = "การเคลื่อนไหว", Content = "เปิดโหมดบินแล้ว", Duration = 2 })
+        _c22 = state
+        if _c22 then
+            _c27()
+            _c3:Notify({ Title = _S(43), Content = _S(51), Duration = 2 })
         else
-            StopFly()
-            WindUI:Notify({ Title = "การเคลื่อนไหว", Content = "ปิดโหมดบินแล้ว", Duration = 2 })
+            _c28()
+            _c3:Notify({ Title = _S(43), Content = _S(52), Duration = 2 })
         end
     end,
 })
 
-MovementTab:Slider({
-    Title = "ความเร็วบิน",
-    Desc = "ปรับความเร็วขณะบิน",
+_c21:Slider({
+    Title = _S(53),
+    Desc = _S(54),
     Value = { Min = 10, Max = 200, Default = 50 },
     Callback = function(value)
-        FlySpeed = value
+        _c23 = value
     end,
 })
 
-LocalPlayer.CharacterAdded:Connect(function()
+_c6.CharacterAdded:Connect(function()
     task.wait(1)
-    if FlyEnabled then
-        StartFly()
+    if _c22 then
+        _c27()
     end
 end)
 
--- ---- หมุนตัวละคร ----
-MovementTab:Section({ Title = "หมุนตัวละคร", Desc = "หมุนตัวเองอัตโนมัติต่อเนื่อง ปรับความเร็วได้" })
+_c21:Section({ Title = _S(55), Desc = _S(56) })
 
-local SpinEnabled = false
-local SpinSpeed = 90
-local SpinConnection = nil
-local SpinAngle = 0
+local _c29 = false
+local _c30 = 90
+local _c31 = nil
+local _c32 = 0
 
-local function StartSpin()
-    SpinAngle = 0
-    SpinConnection = RunService.Heartbeat:Connect(function(dt)
-        local currentChar = LocalPlayer.Character
-        local currentRoot = currentChar and currentChar:FindFirstChild("HumanoidRootPart")
+local function _c33()
+    _c32 = 0
+    _c31 = _c20.Heartbeat:Connect(function(dt)
+        local currentChar = _c6.Character
+        local currentRoot = currentChar and currentChar:FindFirstChild(_S(13))
         if not currentRoot then return end
 
-        SpinAngle = SpinAngle + SpinSpeed * dt
+        _c32 = _c32 + _c30 * dt
         local pos = currentRoot.Position
-        currentRoot.CFrame = CFrame.new(pos) * CFrame.Angles(0, math.rad(SpinAngle), 0)
+        currentRoot.CFrame = CFrame.new(pos) * CFrame.Angles(0, math.rad(_c32), 0)
     end)
 end
 
-local function StopSpin()
-    if SpinConnection then
-        SpinConnection:Disconnect()
-        SpinConnection = nil
+local function _c34()
+    if _c31 then
+        _c31:Disconnect()
+        _c31 = nil
     end
 end
 
-MovementTab:Toggle({
-    Title = "เปิดหมุนตัวละคร",
-    Desc = "ตัวละครจะหมุนรอบตัวเองต่อเนื่องอัตโนมัติ",
+_c21:Toggle({
+    Title = _S(57),
+    Desc = _S(58),
     Value = false,
     Callback = function(state)
-        SpinEnabled = state
-        if SpinEnabled then
-            StartSpin()
-            WindUI:Notify({ Title = "การเคลื่อนไหว", Content = "เปิดหมุนตัวละครแล้ว", Duration = 2 })
+        _c29 = state
+        if _c29 then
+            _c33()
+            _c3:Notify({ Title = _S(43), Content = _S(59), Duration = 2 })
         else
-            StopSpin()
-            WindUI:Notify({ Title = "การเคลื่อนไหว", Content = "ปิดหมุนตัวละครแล้ว", Duration = 2 })
+            _c34()
+            _c3:Notify({ Title = _S(43), Content = _S(60), Duration = 2 })
         end
     end,
 })
 
-MovementTab:Slider({
-    Title = "ความเร็วหมุน",
-    Desc = "หน่วยองศาต่อวินาที",
+_c21:Slider({
+    Title = _S(61),
+    Desc = _S(62),
     Value = { Min = 10, Max = 720, Default = 90 },
     Callback = function(value)
-        SpinSpeed = value
+        _c30 = value
     end,
 })
 
-LocalPlayer.CharacterAdded:Connect(function()
+_c6.CharacterAdded:Connect(function()
     task.wait(1)
-    if SpinEnabled then
-        StartSpin()
+    if _c29 then
+        _c33()
     end
 end)
 
--- ---- ล็อคตำแหน่ง ----
-MovementTab:Section({ Title = "ล็อคตำแหน่ง", Desc = "ค้างตัวละครอยู่กับที่ แต่ยังเปลี่ยนท่าทาง/เล่นแอนิเมชันได้" })
+_c21:Section({ Title = _S(63), Desc = _S(64) })
 
-local PositionLocked = false
+local _c35 = false
 
-local function ApplyPositionLock(state)
-    local char = LocalPlayer.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
+local function _c36(state)
+    local char = _c6.Character
+    local root = char and char:FindFirstChild(_S(13))
     if not root then return end
     root.Anchored = state
 end
 
-MovementTab:Toggle({
-    Title = "ล็อคตำแหน่ง",
-    Desc = "ตรึงตำแหน่งปัจจุบันไว้ ขยับที่ไม่ได้แต่ยังโพสท่า/เล่นแอนิเมชันได้",
+_c21:Toggle({
+    Title = _S(63),
+    Desc = _S(65),
     Value = false,
     Callback = function(state)
-        PositionLocked = state
-        ApplyPositionLock(state)
-        WindUI:Notify({ Title = "การเคลื่อนไหว", Content = "ล็อคตำแหน่ง: " .. (state and "เปิด" or "ปิด"), Duration = 2 })
+        _c35 = state
+        _c36(state)
+        _c3:Notify({ Title = _S(43), Content = _S(66) .. (state and _S(26) or _S(27)), Duration = 2 })
     end,
 })
 
-LocalPlayer.CharacterAdded:Connect(function()
+_c6.CharacterAdded:Connect(function()
     task.wait(1)
-    PositionLocked = false
+    _c35 = false
 end)
 
--- ---- ความเร็ววิ่ง ----
-MovementTab:Section({ Title = "ความเร็ววิ่ง", Desc = "ปรับ WalkSpeed ของตัวละคร" })
+_c21:Section({ Title = _S(67), Desc = _S(68) })
 
-local WalkSpeedValue = 16
+local _c37 = 16
 
-local function ApplyWalkSpeed()
-    local hum = GetHumanoid()
+local function _c38()
+    local hum = _c16()
     if hum then
-        hum.WalkSpeed = WalkSpeedValue
+        hum.WalkSpeed = _c37
     end
 end
 
-MovementTab:Slider({
-    Title = "ความเร็ววิ่ง",
-    Desc = "ค่าเริ่มต้นของเกมคือ 16",
+_c21:Slider({
+    Title = _S(67),
+    Desc = _S(69),
     Value = { Min = 16, Max = 200, Default = 16 },
     Callback = function(value)
-        WalkSpeedValue = value
-        ApplyWalkSpeed()
+        _c37 = value
+        _c38()
     end,
 })
 
--- ---- ความสูงกระโดด ----
-MovementTab:Section({ Title = "ความสูงกระโดด", Desc = "ปรับ JumpPower ของตัวละคร" })
+_c21:Section({ Title = _S(70), Desc = _S(71) })
 
-local JumpPowerValue = 50
+local _c39 = 50
 
-local function ApplyJumpPower()
-    local hum = GetHumanoid()
+local function _c40()
+    local hum = _c16()
     if hum then
         hum.UseJumpPower = true
-        hum.JumpPower = JumpPowerValue
+        hum.JumpPower = _c39
     end
 end
 
-MovementTab:Slider({
-    Title = "ความสูงกระโดด",
-    Desc = "ค่าเริ่มต้นของเกมคือ 50",
+_c21:Slider({
+    Title = _S(70),
+    Desc = _S(72),
     Value = { Min = 50, Max = 300, Default = 50 },
     Callback = function(value)
-        JumpPowerValue = value
-        ApplyJumpPower()
+        _c39 = value
+        _c40()
     end,
 })
 
-LocalPlayer.CharacterAdded:Connect(function()
+_c6.CharacterAdded:Connect(function()
     task.wait(1)
-    ApplyWalkSpeed()
-    ApplyJumpPower()
+    _c38()
+    _c40()
 end)
 
-if LocalPlayer.Character then
-    ApplyWalkSpeed()
-    ApplyJumpPower()
+if _c6.Character then
+    _c38()
+    _c40()
 end
 
--- ===== แท็บดูดไอดีเพลง =====
-local SniffTab = Window:Tab({ Title = "ดูดไอดีเพลง", Icon = "radio" })
+local _c43 = _c2:Tab({ Title = _S(73), Icon = _S(74) })
 
-SniffTab:Section({ Title = "สแกนเพลงในแมพ", Desc = "ดึงไอดีเพลงจากลำโพงที่ผู้เล่นอื่นกำลังเปิดอยู่จริงเท่านั้น" })
+_c43:Section({ Title = _S(75), Desc = _S(76) })
 
-local DetectedSongs = {}
-local SniffButtons = {}
+local _c44 = {}
+local _c45 = {}
 
-local function IsValidAudioId(soundId)
-    if type(soundId) ~= "string" then return false, nil end
-    local id = soundId:match("^rbxassetid://(%d+)$")
+local function _c46(soundId)
+    if type(soundId) ~= _S(77) then return false, nil end
+    local id = soundId:match(_S(78))
     if id then
         return true, id
     end
     return false, nil
 end
 
-local function ScanPlayingSongs()
+local function _c47()
     local results = {}
-    local myChar = LocalPlayer.Character
-    local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
+    local myChar = _c6.Character
+    local myRoot = myChar and myChar:FindFirstChild(_S(13))
 
-    for _, player in ipairs(Players:GetPlayers()) do
+    for _, player in ipairs(_c5:GetPlayers()) do
         local char = player.Character
-        if char and player ~= LocalPlayer then
-            local charRoot = char:FindFirstChild("HumanoidRootPart")
+        if char and player ~= _c6 then
+            local charRoot = char:FindFirstChild(_S(13))
 
             for _, obj in ipairs(char:GetDescendants()) do
-                if obj:IsA("Sound") and obj.IsPlaying then
-                    local valid, audioId = IsValidAudioId(obj.SoundId)
+                if obj:IsA(_S(79)) and obj.IsPlaying then
+                    local valid, audioId = _c46(obj.SoundId)
                     if valid then
                         local dist = math.huge
                         if myRoot and charRoot then
@@ -469,43 +473,43 @@ local function ScanPlayingSongs()
     return results
 end
 
-local function RenderSniffList()
-    for _, btn in ipairs(SniffButtons) do
+local function _c48()
+    for _, btn in ipairs(_c45) do
         pcall(function()
             if btn.Destroy then btn:Destroy() end
         end)
     end
-    table.clear(SniffButtons)
+    table.clear(_c45)
 
-    DetectedSongs = ScanPlayingSongs()
+    _c44 = _c47()
 
-    if #DetectedSongs == 0 then
-        WindUI:Notify({ Title = "ดูดไอดีเพลง", Content = "ไม่พบเพลงที่กำลังเล่นอยู่ในตอนนี้", Duration = 3 })
+    if #_c44 == 0 then
+        _c3:Notify({ Title = _S(73), Content = _S(80), Duration = 3 })
         return
     end
 
-    table.sort(DetectedSongs, function(a, b)
+    table.sort(_c44, function(a, b)
         return a.distance < b.distance
     end)
 
-    for _, song in ipairs(DetectedSongs) do
-        local distText = "ไม่ทราบระยะ"
+    for _, song in ipairs(_c44) do
+        local distText = _S(81)
         if song.distance ~= math.huge then
-            distText = string.format("%.0f สตัด", song.distance)
+            distText = string.format(_S(82), song.distance)
         end
 
         local ok, btn = pcall(function()
-            return SniffTab:Button({
-                Title = song.playerName .. "  |  ID: " .. song.id,
-                Desc = "ระยะห่าง: " .. distText .. " | แตะเพื่อคัดลอก ID",
-                Icon = "copy",
+            return _c43:Button({
+                Title = song.playerName .. _S(83) .. song.id,
+                Desc = _S(84) .. distText .. _S(85),
+                Icon = _S(86),
                 Callback = function()
                     if setclipboard then
                         setclipboard(song.id)
                     end
-                    WindUI:Notify({
-                        Title = "คัดลอกแล้ว",
-                        Content = song.playerName .. " (" .. song.id .. ")",
+                    _c3:Notify({
+                        Title = _S(87),
+                        Content = song.playerName .. _S(88) .. song.id .. _S(89),
                         Duration = 2,
                     })
                 end,
@@ -513,117 +517,115 @@ local function RenderSniffList()
         end)
 
         if ok then
-            table.insert(SniffButtons, btn)
+            table.insert(_c45, btn)
         end
     end
 
-    WindUI:Notify({ Title = "ดูดไอดีเพลง", Content = "พบ " .. #DetectedSongs .. " เพลงที่กำลังเล่นอยู่", Duration = 3 })
+    _c3:Notify({ Title = _S(73), Content = _S(90) .. #_c44 .. _S(91), Duration = 3 })
 end
 
-SniffTab:Button({
-    Title = "ดูดคนใกล้ที่สุด",
-    Icon = "crosshair",
+_c43:Button({
+    Title = _S(92),
+    Icon = _S(93),
     Callback = function()
-        DetectedSongs = ScanPlayingSongs()
+        _c44 = _c47()
 
-        if #DetectedSongs == 0 then
-            WindUI:Notify({ Title = "ผิดพลาด", Content = "ไม่พบเพลงที่กำลังเล่นอยู่ตอนนี้", Duration = 3 })
+        if #_c44 == 0 then
+            _c3:Notify({ Title = _S(11), Content = _S(94), Duration = 3 })
             return
         end
 
-        table.sort(DetectedSongs, function(a, b)
+        table.sort(_c44, function(a, b)
             return a.distance < b.distance
         end)
 
-        local nearest = DetectedSongs[1]
+        local nearest = _c44[1]
         if setclipboard then
             setclipboard(nearest.id)
         end
-        WindUI:Notify({
-            Title = "ดูดสำเร็จ",
-            Content = nearest.playerName .. " (" .. nearest.id .. ")",
+        _c3:Notify({
+            Title = _S(95),
+            Content = nearest.playerName .. _S(88) .. nearest.id .. _S(89),
             Duration = 3,
         })
     end,
 })
 
-SniffTab:Button({
-    Title = "รีเฟรชรายการ",
-    Icon = "refresh-cw",
+_c43:Button({
+    Title = _S(96),
+    Icon = _S(97),
     Callback = function()
-        RenderSniffList()
+        _c48()
     end,
 })
 
-SniffTab:Section({ Title = "รายการเพลงที่กำลังเล่น" })
+_c43:Section({ Title = _S(98) })
 
-RenderSniffList()
+_c48()
 
--- ===== แท็บ Anti Lag =====
-local PerformanceTab = Window:Tab({ Title = "ประสิทธิภาพ", Icon = "gauge" })
+local _c41 = _c2:Tab({ Title = _S(99), Icon = _S(100) })
 
-PerformanceTab:Section({ Title = "ลดแลค", Desc = "ลบสิ่งของที่ไม่จำเป็นเพื่อเพิ่ม FPS" })
+_c41:Section({ Title = _S(101), Desc = _S(102) })
 
-local RemovedItems = {}
+local _c42 = {}
 
-PerformanceTab:Button({
-    Title = "ลบต้นไม้/พุ่มไม้",
-    Icon = "trash-2",
+_c41:Button({
+    Title = _S(103),
+    Icon = _S(104),
     Callback = function()
         local count = 0
         for _, obj in ipairs(workspace:GetDescendants()) do
-            if obj:IsA("BasePart") then
+            if obj:IsA(_S(105)) then
                 local n = string.lower(obj.Name)
-                if string.find(n, "tree") or string.find(n, "bush") or string.find(n, "plant") then
+                if string.find(n, _S(106)) or string.find(n, _S(107)) or string.find(n, _S(108)) then
                     obj.Transparency = 1
                     obj.CanCollide = false
-                    table.insert(RemovedItems, obj)
+                    table.insert(_c42, obj)
                     count += 1
                 end
             end
         end
-        WindUI:Notify({ Title = "Anti Lag", Content = "ซ่อนแล้ว " .. count .. " ชิ้น", Duration = 3 })
+        _c3:Notify({ Title = _S(109), Content = _S(110) .. count .. _S(111), Duration = 3 })
     end,
 })
 
-PerformanceTab:Button({
-    Title = "ปิดเงา (Shadows)",
-    Icon = "sun",
+_c41:Button({
+    Title = _S(112),
+    Icon = _S(113),
     Callback = function()
         settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-        game:GetService("Lighting").GlobalShadows = false
-        WindUI:Notify({ Title = "Anti Lag", Content = "ปิดเงาและลดคุณภาพกราฟิกแล้ว", Duration = 3 })
+        game:GetService(_S(114)).GlobalShadows = false
+        _c3:Notify({ Title = _S(109), Content = _S(115), Duration = 3 })
     end,
 })
 
-PerformanceTab:Button({
-    Title = "ลดระยะมองเห็น (Fog/Distance)",
-    Icon = "eye-off",
+_c41:Button({
+    Title = _S(116),
+    Icon = _S(117),
     Callback = function()
-        local Lighting = game:GetService("Lighting")
+        local Lighting = game:GetService(_S(114))
         Lighting.FogEnd = 300
         workspace.StreamingTargetRadius = 300
-        WindUI:Notify({ Title = "Anti Lag", Content = "ลดระยะ Render แล้ว", Duration = 3 })
+        _c3:Notify({ Title = _S(109), Content = _S(118), Duration = 3 })
     end,
 })
 
-PerformanceTab:Button({
-    Title = "คืนค่าทั้งหมด",
-    Icon = "rotate-ccw",
+_c41:Button({
+    Title = _S(119),
+    Icon = _S(120),
     Callback = function()
-        for _, obj in ipairs(RemovedItems) do
+        for _, obj in ipairs(_c42) do
             if obj and obj.Parent then
                 obj.Transparency = 0
                 obj.CanCollide = true
             end
         end
-        table.clear(RemovedItems)
+        table.clear(_c42)
         settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
-        game:GetService("Lighting").GlobalShadows = true
-        game:GetService("Lighting").FogEnd = 100000
-        WindUI:Notify({ Title = "Anti Lag", Content = "คืนค่าทุกอย่างแล้ว", Duration = 3 })
+        game:GetService(_S(114)).GlobalShadows = true
+        game:GetService(_S(114)).FogEnd = 100000
+        _c3:Notify({ Title = _S(109), Content = _S(121), Duration = 3 })
     end,
 })
 
--- ===== ตั้งค่า (ต้องอยู่ล่างสุดเสมอ) =====
-Core.Settings(Window, WindUI)
+_c1.Settings(_c2, _c3)
