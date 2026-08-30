@@ -14,6 +14,9 @@ local LocalPlayer = Players.LocalPlayer
 local Songs = loadstring(game:HttpGet("https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/songs.lua"))()
 Songs.AddSongsTab(Window, WindUI, false)
 
+-- ===== แท็บดูดไอดีเพลง (ใช้ได้ทุกแมพ) =====
+Songs.AddSniffTab(Window, WindUI)
+
 -- ===== แท็บเทเลพอต =====
 local TeleportTab = Window:Tab({ Title = "เทเลพอต", Icon = "map-pin" })
 
@@ -30,12 +33,47 @@ local function GetPlayerNames()
 end
 
 local SelectedPlayer = nil
+local PlayerDropdown
 
-TeleportTab:Dropdown({
+PlayerDropdown = TeleportTab:Dropdown({
     Title = "เลือกผู้เล่น",
     Values = GetPlayerNames(),
     Callback = function(selected)
         SelectedPlayer = selected
+    end,
+})
+
+local function RefreshPlayerDropdown()
+    local names = GetPlayerNames()
+    local ok1 = pcall(function()
+        PlayerDropdown:Refresh(names)
+    end)
+    if not ok1 then
+        pcall(function()
+            PlayerDropdown:SetValues(names)
+        end)
+    end
+end
+
+Players.PlayerAdded:Connect(function()
+    task.wait(0.5)
+    RefreshPlayerDropdown()
+end)
+
+Players.PlayerRemoving:Connect(function(p)
+    task.wait(0.2)
+    RefreshPlayerDropdown()
+    if SelectedPlayer == p.Name then
+        SelectedPlayer = nil
+    end
+end)
+
+TeleportTab:Button({
+    Title = "รีเฟรชรายชื่อผู้เล่น",
+    Icon = "refresh-cw",
+    Callback = function()
+        RefreshPlayerDropdown()
+        WindUI:Notify({ Title = "เทเลพอต", Content = "อัปเดตรายชื่อแล้ว", Duration = 2 })
     end,
 })
 
@@ -60,7 +98,8 @@ TeleportTab:Button({
                 WindUI:Notify({ Title = "สำเร็จ", Content = "เทเลพอตไปหา " .. SelectedPlayer, Duration = 3 })
             end
         else
-            WindUI:Notify({ Title = "ผิดพลาด", Content = "หาผู้เล่นไม่เจอ", Duration = 3 })
+            WindUI:Notify({ Title = "ผิดพลาด", Content = "หาผู้เล่นไม่เจอ (อาจออกจากเกมไปแล้ว)", Duration = 3 })
+            RefreshPlayerDropdown()
         end
     end,
 })
@@ -77,6 +116,11 @@ local AntiRagdoll = false
 local function GetHumanoid()
     local char = LocalPlayer.Character
     return char and char:FindFirstChildOfClass("Humanoid")
+end
+
+local function GetRoot()
+    local char = LocalPlayer.Character
+    return char and char:FindFirstChild("HumanoidRootPart")
 end
 
 local function ApplyRagdollStates()
@@ -122,6 +166,23 @@ if LocalPlayer.Character then
     HookCharacter(LocalPlayer.Character)
 end
 
+-- ตรวจจับความเร็วผิดปกติ (แรงกระแทก/ดีดจากของในแมพ) แล้วหักลบทันที
+local NORMAL_VELOCITY_LIMIT = 90 -- studs/sec สูงกว่านี้ถือว่าผิดปกติ (บิน/หมุนของเราเองไม่โดนกระทบเพราะไม่ผ่าน AssemblyLinearVelocity แบบนี้)
+local LastGoodVelocity = Vector3.new(0, 0, 0)
+
+game:GetService("RunService").Heartbeat:Connect(function()
+    if not AntiKnockback then return end
+    local root = GetRoot()
+    if not root then return end
+
+    local vel = root.AssemblyLinearVelocity
+    local horizontalSpeed = Vector3.new(vel.X, 0, vel.Z).Magnitude
+
+    if horizontalSpeed > NORMAL_VELOCITY_LIMIT then
+        root.AssemblyLinearVelocity = Vector3.new(0, math.max(vel.Y, 0), 0)
+    end
+end)
+
 ProtectionTab:Section({ Title = "การนั่ง", Desc = "ป้องกันไม่ให้ตัวละครนั่งได้" })
 
 ProtectionTab:Toggle({
@@ -155,11 +216,11 @@ ProtectionTab:Toggle({
     end,
 })
 
-ProtectionTab:Section({ Title = "แรงกระแทก", Desc = "ป้องกันการถูกเหวี่ยง/ล้ม" })
+ProtectionTab:Section({ Title = "แรงกระแทก", Desc = "ป้องกันการถูกเหวี่ยง/ล้ม (ทั้งสถานะและแรงจริง)" })
 
 ProtectionTab:Toggle({
     Title = "กันโดนดีด",
-    Desc = "ป้องกันการถูกดีด (Knockback)",
+    Desc = "ป้องกันการถูกดีดจากของในแมพ (หักล้างแรงกระแทกจริง ไม่ใช่แค่บล็อกสถานะ)",
     Value = false,
     Callback = function(state)
         AntiKnockback = state
@@ -184,7 +245,7 @@ local RunService = game:GetService("RunService")
 
 local MovementTab = Window:Tab({ Title = "การเคลื่อนไหว", Icon = "move" })
 
-MovementTab:Section({ Title = "บิน", Desc = "เปิดโหมดบินอิสระ รองรับมือถือ" })
+MovementTab:Section({ Title = "บิน", Desc = "เปิดโหมดบินอิสระ รองรับมือถือ ความสูงคุมด้วยมุมกล้องเสมอ" })
 
 local FlyEnabled = false
 local FlySpeed = 50
@@ -222,14 +283,16 @@ local function StartFly()
         local inputMagnitude = moveDir.Magnitude
         local camCFrame = camera.CFrame
 
-        if inputMagnitude > 0.05 then
-            local horizontal = moveDir.Unit * FlySpeed * inputMagnitude
-            local vertical = camCFrame.LookVector.Y * FlySpeed * inputMagnitude
-            FlyBodyVelocity.Velocity = horizontal + Vector3.new(0, vertical, 0)
-        else
-            FlyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
+        local horizontal = Vector3.new(0, 0, 0)
+        if inputMagnitude > 0.02 then
+            horizontal = moveDir.Unit * FlySpeed * inputMagnitude
         end
 
+        -- แนวตั้งแยกออกจากทิศเดินหน้า/ถอยหลังเสมอ ใช้มุมกล้องอย่างเดียว
+        -- เพื่อไม่ให้ถอยหลังแล้วความสูงถูกล็อค
+        local vertical = camCFrame.LookVector.Y * FlySpeed
+
+        FlyBodyVelocity.Velocity = horizontal + Vector3.new(0, vertical, 0)
         FlyBodyGyro.CFrame = camCFrame
     end)
 end
@@ -251,7 +314,7 @@ end
 
 MovementTab:Toggle({
     Title = "เปิดโหมดบิน",
-    Desc = "โยกจอยไปทางไหนก็บินไปทางนั้น เงย/ก้มกล้องเพื่อขึ้น-ลง",
+    Desc = "โยกจอยไปทางไหนก็บินไปทางนั้น เงย/ก้มกล้องเพื่อขึ้น-ลง แม้ถอยหลังก็ปรับความสูงได้",
     Value = false,
     Callback = function(state)
         FlyEnabled = state
@@ -281,36 +344,39 @@ LocalPlayer.CharacterAdded:Connect(function()
     end
 end)
 
-MovementTab:Section({ Title = "หมุนตัวละคร", Desc = "หมุนตัวเองอัตโนมัติต่อเนื่อง ปรับความเร็วได้" })
+-- ===== หมุนตัวละคร (ใช้แรงหมุนจริง คนอื่นเห็นลื่น ไม่กระตุก) =====
+MovementTab:Section({ Title = "หมุนตัวละคร", Desc = "หมุนตัวเองอัตโนมัติต่อเนื่อง คนอื่นเห็นหมุนจริงลื่นๆ" })
 
 local SpinEnabled = false
-local SpinSpeed = 90
-local SpinConnection = nil
-local SpinAngle = 0
+local SpinSpeed = 180
+local SpinBAV = nil
 
 local function StartSpin()
-    SpinAngle = 0
-    SpinConnection = RunService.Heartbeat:Connect(function(dt)
-        local currentChar = LocalPlayer.Character
-        local currentRoot = currentChar and currentChar:FindFirstChild("HumanoidRootPart")
-        if not currentRoot then return end
+    local char = LocalPlayer.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
 
-        SpinAngle = SpinAngle + SpinSpeed * dt
-        local pos = currentRoot.Position
-        currentRoot.CFrame = CFrame.new(pos) * CFrame.Angles(0, math.rad(SpinAngle), 0)
-    end)
+    if SpinBAV then
+        SpinBAV:Destroy()
+    end
+
+    SpinBAV = Instance.new("BodyAngularVelocity")
+    SpinBAV.MaxTorque = Vector3.new(0, math.huge, 0)
+    SpinBAV.P = 10000
+    SpinBAV.AngularVelocity = Vector3.new(0, math.rad(SpinSpeed), 0)
+    SpinBAV.Parent = root
 end
 
 local function StopSpin()
-    if SpinConnection then
-        SpinConnection:Disconnect()
-        SpinConnection = nil
+    if SpinBAV then
+        SpinBAV:Destroy()
+        SpinBAV = nil
     end
 end
 
 MovementTab:Toggle({
     Title = "เปิดหมุนตัวละคร",
-    Desc = "ตัวละครจะหมุนรอบตัวเองต่อเนื่องอัตโนมัติ",
+    Desc = "ตัวละครจะหมุนรอบตัวเองต่อเนื่องอัตโนมัติ ใช้แรงหมุนจริงทำให้คนอื่นเห็นตรงกัน",
     Value = false,
     Callback = function(state)
         SpinEnabled = state
@@ -326,10 +392,13 @@ MovementTab:Toggle({
 
 MovementTab:Slider({
     Title = "ความเร็วหมุน",
-    Desc = "หน่วยองศาต่อวินาที",
-    Value = { Min = 10, Max = 720, Default = 90 },
+    Desc = "หน่วยองศาต่อวินาที (ปรับได้เร็วขึ้นมาก)",
+    Value = { Min = 30, Max = 2160, Default = 180 },
     Callback = function(value)
         SpinSpeed = value
+        if SpinBAV then
+            SpinBAV.AngularVelocity = Vector3.new(0, math.rad(SpinSpeed), 0)
+        end
     end,
 })
 
@@ -367,9 +436,11 @@ LocalPlayer.CharacterAdded:Connect(function()
     PositionLocked = false
 end)
 
-MovementTab:Section({ Title = "ความเร็ววิ่ง", Desc = "ปรับ WalkSpeed ของตัวละคร" })
+-- ===== ความเร็ววิ่ง / กระโดด (ล็อคค่าไว้ตลอด ไม่ถูกรีเซ็ต) =====
+MovementTab:Section({ Title = "ความเร็ววิ่ง", Desc = "ปรับ WalkSpeed และล็อคค่าไว้ตลอด แม้ถูกรีเซ็ตหรือตายก็คงเดิม" })
 
 local WalkSpeedValue = 16
+local WalkSpeedLocked = false
 
 local function ApplyWalkSpeed()
     local hum = GetHumanoid()
@@ -380,17 +451,19 @@ end
 
 MovementTab:Slider({
     Title = "ความเร็ววิ่ง",
-    Desc = "ค่าเริ่มต้นของเกมคือ 16",
+    Desc = "ค่าเริ่มต้นของเกมคือ 16 (ล็อคไว้ตลอดอัตโนมัติเมื่อปรับ)",
     Value = { Min = 16, Max = 200, Default = 16 },
     Callback = function(value)
         WalkSpeedValue = value
+        WalkSpeedLocked = true
         ApplyWalkSpeed()
     end,
 })
 
-MovementTab:Section({ Title = "ความสูงกระโดด", Desc = "ปรับ JumpPower ของตัวละคร" })
+MovementTab:Section({ Title = "ความสูงกระโดด", Desc = "ปรับ JumpPower และล็อคค่าไว้ตลอด แม้ถูกรีเซ็ตหรือตายก็คงเดิม" })
 
 local JumpPowerValue = 50
+local JumpPowerLocked = false
 
 local function ApplyJumpPower()
     local hum = GetHumanoid()
@@ -402,23 +475,38 @@ end
 
 MovementTab:Slider({
     Title = "ความสูงกระโดด",
-    Desc = "ค่าเริ่มต้นของเกมคือ 50",
+    Desc = "ค่าเริ่มต้นของเกมคือ 50 (ล็อคไว้ตลอดอัตโนมัติเมื่อปรับ)",
     Value = { Min = 50, Max = 300, Default = 50 },
     Callback = function(value)
         JumpPowerValue = value
+        JumpPowerLocked = true
         ApplyJumpPower()
     end,
 })
 
+RunService.Heartbeat:Connect(function()
+    local hum = GetHumanoid()
+    if not hum then return end
+
+    if WalkSpeedLocked and math.abs(hum.WalkSpeed - WalkSpeedValue) > 0.01 then
+        hum.WalkSpeed = WalkSpeedValue
+    end
+
+    if JumpPowerLocked and math.abs(hum.JumpPower - JumpPowerValue) > 0.01 then
+        hum.UseJumpPower = true
+        hum.JumpPower = JumpPowerValue
+    end
+end)
+
 LocalPlayer.CharacterAdded:Connect(function()
     task.wait(1)
-    ApplyWalkSpeed()
-    ApplyJumpPower()
+    if WalkSpeedLocked then ApplyWalkSpeed() end
+    if JumpPowerLocked then ApplyJumpPower() end
 end)
 
 if LocalPlayer.Character then
-    ApplyWalkSpeed()
-    ApplyJumpPower()
+    if WalkSpeedLocked then ApplyWalkSpeed() end
+    if JumpPowerLocked then ApplyJumpPower() end
 end
 
 -- ===== แท็บ Anti Lag =====
