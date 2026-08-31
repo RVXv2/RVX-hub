@@ -1,7 +1,7 @@
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
 local Core = {}
-local HUB_VERSION = "v1.0"
+local HUB_VERSION = "v1.5"
 local CONFIG_FILE = "RVXHub_Config.json"
 
 local DEFAULT_CONFIG = {
@@ -276,7 +276,7 @@ function Core.Init(mapName)
         Title = T.discord,
         Icon = "message-circle",
         Callback = function()
-            local discordLink = "https://discord.gg/YOUR-INVITE-CODE"
+            local discordLink = "hhttps://discord.gg/WQePykh3yJ"
             local copied = false
             if setclipboard then
                 local ok = pcall(setclipboard, discordLink)
