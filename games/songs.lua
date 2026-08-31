@@ -1,7 +1,7 @@
 local Core = {}
 
 local API_BASE = "http://de3.bot-hosting.net:20209"
-local API_KEY  = "YOUR_API_KEY_HERE"
+local API_KEY  = "sgid_31b8690121b792dc6274b58b2df2dcc50ba656af"
 
 function Core.AddSongsTab(Window, WindUI, enablePlayback)
     local SongsTab = Window:Tab({ Title = "เพลง", Icon = "music" })
@@ -195,7 +195,7 @@ function Core.AddSongsTab(Window, WindUI, enablePlayback)
             end
 
             local ok, res = pcall(fn, {
-                Url = API_BASE .. "/api/public/songs?banned=false&limit=100",
+                Url = API_BASE .. "/api/public/songs?banned=false&limit=5000",
                 Method = "GET",
                 Headers = { ["X-API-Key"] = API_KEY },
             })
