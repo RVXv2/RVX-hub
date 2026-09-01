@@ -211,6 +211,16 @@ function Core.Init(mapName)
         IconSize = 32, -- ค่า default เล็กมองไม่ค่อยชัด ปรับให้ใหญ่ขึ้น (ลอง 40-44 ได้ถ้ายังเล็กไป)
         Theme = Core.Config.Theme,
         Transparent = Core.Config.Transparent,
+        -- ปุ่มลอย (โผล่ตอนซ่อน Hub ไว้) กดแล้วเปิด Hub กลับมา
+        -- ปรับข้อความ/สีตรงนี้ได้เลย ไม่กระทบส่วนอื่น
+        OpenButton = {
+            Title = "RVX Hub",
+            CornerRadius = UDim.new(0, 12), -- มนพอดี ไม่กลมจนเป็นแคปซูล (ปรับตัวเลขได้ ยิ่งมากยิ่งมน)
+            Color = ColorSequence.new(
+                Color3.fromHex("#6D28D9"), -- ม่วง
+                Color3.fromHex("#3B82F6")  -- น้ำเงิน
+            ),
+        },
     })
 
     GlobalStore.__RVXHub_Instance = GlobalStore.__RVXHub_Instance or {}
