@@ -623,5 +623,8 @@ PerformanceTab:Button({
     end,
 })
 
+-- ===== แท็บสคริปต์ =====
+Core.Scripts(Window, WindUI)
+
 -- ===== ตั้งค่า (ต้องอยู่ล่างสุดเสมอ) =====
 Core.Settings(Window, WindUI)
