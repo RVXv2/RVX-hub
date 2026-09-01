@@ -232,12 +232,17 @@ function Core.Settings(Window, WindUI)
         end,
     })
 
-    game:BindToClose(function()
-        if Core.Config.AutoReconnect then
-            pcall(function()
-                TeleportService:Teleport(game.PlaceId, Players.LocalPlayer)
-            end)
-        end
+    -- BindToClose ทำงานไม่ได้ในบาง executor และจะ error จนโค้ดที่เหลือ
+    -- (ภาษา / ความโปร่งใส / ปุ่มลัด / สถิติ / บันทึก-รีเซ็ต) ไม่ถูกสร้างเลย
+    -- ครอบ pcall กันไว้ไม่ให้ error ตรงนี้ทำให้ UI ส่วนที่เหลือหายไป
+    pcall(function()
+        game:BindToClose(function()
+            if Core.Config.AutoReconnect then
+                pcall(function()
+                    TeleportService:Teleport(game.PlaceId, Players.LocalPlayer)
+                end)
+            end
+        end)
     end)
 
     -- ===== ภาษา =====
