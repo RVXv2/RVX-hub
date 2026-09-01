@@ -167,7 +167,7 @@ function Core.Init(mapName)
         Icon = "message-circle",
         Callback = function()
             if setclipboard then
-                setclipboard("https://discord.gg/YOUR-INVITE-CODE")
+                setclipboard("https://discord.gg/WQePykh3yJ")
             end
             WindUI:Notify({
                 Title = T.discordCopied,
