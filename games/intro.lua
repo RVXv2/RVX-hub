@@ -219,15 +219,29 @@ end
 -- (ทั้งสองอย่างมีผลแค่ตอน CreateWindow/Tab ครั้งแรกเท่านั้น) วิธีที่ทำได้จริงคือ
 -- ปิด Hub เดิมแล้วสร้างใหม่ทันทีด้วยค่าที่อัปเดตแล้ว ซึ่งจะรู้สึกเหมือนเปลี่ยนแบบสดๆ
 -- โดยไม่ต้องออกจากเกม
+--
+-- สำคัญ: ต้องรัน task.spawn() แยก thread เพราะถ้า Destroy + Init ใหม่ทำงาน
+-- "ทันที" ในคอลแบ็คของปุ่ม/ดรอปดาวน์เดิม แล้วข้างใน Core.Init มีการเรียก
+-- Players:GetUserThumbnailAsync() ซึ่งต้อง yield รอผลลัพธ์ บาง WindUI/executor
+-- จะ error แบบเงียบ (yield ข้าม callback boundary ไม่ได้) ทำให้ Destroy สำเร็จ
+-- แต่สร้างใหม่ไม่ทันเสร็จ เลยดูเหมือน Hub หายไปเฉยๆ ไม่ขึ้นมาใหม่
 function Core.Rebuild(OldWindow)
-    pcall(function()
-        OldWindow:Destroy()
+    task.spawn(function()
+        pcall(function()
+            OldWindow:Destroy()
+        end)
+
+        task.wait() -- ให้ instance เก่าถูกทำลายเสร็จสมบูรณ์ก่อนสร้างหน้าต่างใหม่
+
+        local ok, err = pcall(function()
+            local NewWindow, NewWindUI = Core.Init(Core.MapName)
+            Core.Settings(NewWindow, NewWindUI)
+        end)
+
+        if not ok then
+            warn("[RVX Hub] Rebuild failed: " .. tostring(err))
+        end
     end)
-
-    local NewWindow, NewWindUI = Core.Init(Core.MapName)
-    Core.Settings(NewWindow, NewWindUI)
-
-    return NewWindow, NewWindUI
 end
 
 function Core.Settings(Window, WindUI)
