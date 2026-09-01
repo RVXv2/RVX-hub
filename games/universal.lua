@@ -392,8 +392,8 @@ MovementTab:Toggle({
 
 MovementTab:Slider({
     Title = "ความเร็วหมุน",
-    Desc = "หน่วยองศาต่อวินาที (ปรับได้เร็วขึ้นมาก)",
-    Value = { Min = 30, Max = 2160, Default = 180 },
+    Desc = "หน่วยองศาต่อวินาที (ค่าสูงมากๆ อาจดูสั่น/ไม่ลื่นเพราะข้อจำกัดฟิสิกส์ของเกม ลองปรับดูจุดที่ลื่นสุด)",
+    Value = { Min = 30, Max = 10000, Default = 180 },
     Callback = function(value)
         SpinSpeed = value
         if SpinBAV then
