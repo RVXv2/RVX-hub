@@ -6,7 +6,7 @@ local CONFIG_FILE = "RVXHub_Config.json"
 
 -- ลิงก์ raw ของไฟล์ RVXHub_Scripts.lua (ต้องอัปโหลดไฟล์นั้นขึ้น host เอง
 -- เช่น GitHub raw) แล้วแก้ URL ด้านล่างให้ตรงกับที่อัปไว้จริง
-local SCRIPTS_MODULE_URL = "https://raw.githubusercontent.com/USERNAME/REPO/main/RVXHub_Scripts.lua"
+local SCRIPTS_MODULE_URL = "https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/RVXHub_Scripts.lua"
 
 -- ===== ข้อความ Changelog (แก้ตรงนี้ที่เดียว ไม่ต้องไปหาในโค้ด) =====
 -- Notes แต่ละบรรทัดจะถูกต่อกันด้วยขึ้นบรรทัดใหม่ในหน้าแรก
