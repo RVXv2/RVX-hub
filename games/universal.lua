@@ -107,11 +107,56 @@ TeleportTab:Button({
 -- ===== แท็บการป้องกัน =====
 local ProtectionTab = Window:Tab({ Title = "การป้องกัน", Icon = "shield" })
 
-local AntiSitAll = false
-local AntiSitChair = false
-local AntiSitVehicle = false
-local AntiKnockback = false
-local AntiRagdoll = false
+-- บันทึก/โหลดค่า toggle ทั้งหมดลงไฟล์แยก เพื่อให้จำค่าได้แม้ออกเข้าเกมใหม่
+-- (รันสคริปต์ใหม่) ไม่ต้องมาติ๊กเปิดใหม่ทุกครั้ง
+local PROTECTION_CONFIG_FILE = "RVXHub_ProtectionConfig.json"
+
+local function LoadProtectionConfig()
+    local defaults = {
+        AntiSitAll = false,
+        AntiSitChair = false,
+        AntiSitVehicle = false,
+        AntiKnockback = false,
+        AntiRagdoll = false,
+    }
+    if isfile and isfile(PROTECTION_CONFIG_FILE) then
+        local ok, data = pcall(function()
+            return game:GetService("HttpService"):JSONDecode(readfile(PROTECTION_CONFIG_FILE))
+        end)
+        if ok and data then
+            for k, v in pairs(data) do
+                defaults[k] = v
+            end
+        end
+    end
+    return defaults
+end
+
+local function SaveProtectionConfig(cfg)
+    if writefile then
+        pcall(function()
+            writefile(PROTECTION_CONFIG_FILE, game:GetService("HttpService"):JSONEncode(cfg))
+        end)
+    end
+end
+
+local ProtectionConfig = LoadProtectionConfig()
+
+local AntiSitAll = ProtectionConfig.AntiSitAll
+local AntiSitChair = ProtectionConfig.AntiSitChair
+local AntiSitVehicle = ProtectionConfig.AntiSitVehicle
+local AntiKnockback = ProtectionConfig.AntiKnockback
+local AntiRagdoll = ProtectionConfig.AntiRagdoll
+
+local function PersistProtectionConfig()
+    SaveProtectionConfig({
+        AntiSitAll = AntiSitAll,
+        AntiSitChair = AntiSitChair,
+        AntiSitVehicle = AntiSitVehicle,
+        AntiKnockback = AntiKnockback,
+        AntiRagdoll = AntiRagdoll,
+    })
+end
 
 local function GetHumanoid()
     local char = LocalPlayer.Character
@@ -138,8 +183,7 @@ local function ApplySitAllState()
 end
 
 local function HookCharacter(char)
-    task.wait(1)
-    local hum = char:FindFirstChildOfClass("Humanoid")
+    local hum = char:WaitForChild("Humanoid", 5)
     if not hum then return end
 
     ApplyRagdollStates()
@@ -167,10 +211,16 @@ if LocalPlayer.Character then
 end
 
 -- ตรวจจับความเร็วผิดปกติ (แรงกระแทก/ดีดจากของในแมพ) แล้วหักลบทันที
+-- และคงสภาพการป้องกัน (Ragdoll/Knockback/นั่ง) ทุกเฟรม แทนที่จะพึ่ง HookCharacter
+-- อย่างเดียว (ซึ่งมี delay ทำให้ตายแล้วโดนกระแทกก่อนกันจะกลับมาทำงาน)
+-- วิธีนี้การป้องกันจะกลับมาทำงานทันทีไม่ว่าอะไรจะรีเซ็ตสถานะ Humanoid ก็ตาม
 local NORMAL_VELOCITY_LIMIT = 90 -- studs/sec สูงกว่านี้ถือว่าผิดปกติ (บิน/หมุนของเราเองไม่โดนกระทบเพราะไม่ผ่าน AssemblyLinearVelocity แบบนี้)
 local LastGoodVelocity = Vector3.new(0, 0, 0)
 
 game:GetService("RunService").Heartbeat:Connect(function()
+    ApplyRagdollStates()
+    ApplySitAllState()
+
     if not AntiKnockback then return end
     local root = GetRoot()
     if not root then return end
@@ -188,10 +238,11 @@ ProtectionTab:Section({ Title = "การนั่ง", Desc = "ป้องก
 ProtectionTab:Toggle({
     Title = "กันนั่งทุกอย่าง",
     Desc = "บล็อกทุกจุดพร้อมกัน (เก้าอี้ + รถ + อื่นๆ)",
-    Value = false,
+    Value = AntiSitAll,
     Callback = function(state)
         AntiSitAll = state
         ApplySitAllState()
+        PersistProtectionConfig()
         WindUI:Notify({ Title = "การป้องกัน", Content = "กันนั่งทุกอย่าง: " .. (state and "เปิด" or "ปิด"), Duration = 2 })
     end,
 })
@@ -199,9 +250,10 @@ ProtectionTab:Toggle({
 ProtectionTab:Toggle({
     Title = "กันนั่งเก้าอี้",
     Desc = "เฉพาะที่นั่งทั่วไป ไม่รวมรถ",
-    Value = false,
+    Value = AntiSitChair,
     Callback = function(state)
         AntiSitChair = state
+        PersistProtectionConfig()
         WindUI:Notify({ Title = "การป้องกัน", Content = "กันนั่งเก้าอี้: " .. (state and "เปิด" or "ปิด"), Duration = 2 })
     end,
 })
@@ -209,9 +261,10 @@ ProtectionTab:Toggle({
 ProtectionTab:Toggle({
     Title = "กันนั่งรถ",
     Desc = "เฉพาะเบาะรถ ไม่รวมเก้าอี้",
-    Value = false,
+    Value = AntiSitVehicle,
     Callback = function(state)
         AntiSitVehicle = state
+        PersistProtectionConfig()
         WindUI:Notify({ Title = "การป้องกัน", Content = "กันนั่งรถ: " .. (state and "เปิด" or "ปิด"), Duration = 2 })
     end,
 })
@@ -221,10 +274,11 @@ ProtectionTab:Section({ Title = "แรงกระแทก", Desc = "ป้อ
 ProtectionTab:Toggle({
     Title = "กันโดนดีด",
     Desc = "ป้องกันการถูกดีดจากของในแมพ (หักล้างแรงกระแทกจริง ไม่ใช่แค่บล็อกสถานะ)",
-    Value = false,
+    Value = AntiKnockback,
     Callback = function(state)
         AntiKnockback = state
         ApplyRagdollStates()
+        PersistProtectionConfig()
         WindUI:Notify({ Title = "การป้องกัน", Content = "กันโดนดีด: " .. (state and "เปิด" or "ปิด"), Duration = 2 })
     end,
 })
@@ -232,10 +286,11 @@ ProtectionTab:Toggle({
 ProtectionTab:Toggle({
     Title = "กันล้ม",
     Desc = "ป้องกัน Ragdoll",
-    Value = false,
+    Value = AntiRagdoll,
     Callback = function(state)
         AntiRagdoll = state
         ApplyRagdollStates()
+        PersistProtectionConfig()
         WindUI:Notify({ Title = "การป้องกัน", Content = "กันล้ม: " .. (state and "เปิด" or "ปิด"), Duration = 2 })
     end,
 })
