@@ -8,7 +8,7 @@ local DEFAULT_CONFIG = {
     Theme = "Violet",
     AutoReconnect = false,
     Language = "TH",
-    Transparent = false,
+    Transparent = true,
     QuickCloseKey = "K",
 }
 
@@ -29,9 +29,9 @@ local LANG = {
         autoreconnect = "Auto Reconnect",
         autoreconnectDesc = "เข้าเกมใหม่อัตโนมัติถ้าหลุดเซิร์ฟเวอร์",
         language = "ภาษา",
-        languageDesc = "มีผลกับหน้าแรกและการตั้งค่า (ต้องเข้าเกมใหม่ถึงจะเห็นผลเต็มที่)",
+        languageDesc = "มีผลกับหน้าแรกและการตั้งค่าทันที (Hub จะรีเฟรชตัวเองสั้นๆ)",
         appearance = "รูปลักษณ์",
-        appearanceDesc = "ปรับความโปร่งใสของหน้าต่าง Hub (มีผลหลังปิด-เปิด Hub ใหม่)",
+        appearanceDesc = "ปรับความโปร่งใสของหน้าต่าง Hub (มีผลทันที Hub จะรีเฟรชตัวเองสั้นๆ)",
         transparency = "หน้าต่างโปร่งใส",
         transparencySaved = "บันทึกแล้ว จะมีผลตอนเปิด Hub ครั้งถัดไป",
         languageSaved = "บันทึกภาษาแล้ว เข้าเกมใหม่เพื่อให้มีผลเต็มที่",
@@ -66,9 +66,9 @@ local LANG = {
         autoreconnect = "Auto Reconnect",
         autoreconnectDesc = "Auto rejoin if you get disconnected",
         language = "Language",
-        languageDesc = "Affects Home and Settings tabs (rejoin for full effect)",
+        languageDesc = "Affects Home and Settings tabs immediately (the Hub briefly refreshes)",
         appearance = "Appearance",
-        appearanceDesc = "Adjust the Hub window transparency (applies next time you open the Hub)",
+        appearanceDesc = "Adjust the Hub window transparency (applies instantly, Hub briefly refreshes)",
         transparency = "Transparent window",
         transparencySaved = "Saved. Applies the next time the Hub opens.",
         languageSaved = "Language saved. Rejoin for full effect.",
@@ -118,8 +118,10 @@ local function SaveConfigToFile(cfg)
 end
 
 Core.Config = LoadConfig()
+Core.MapName = nil
 
 function Core.Init(mapName)
+    Core.MapName = mapName
     local T = LANG[Core.Config.Language] or LANG.TH
 
     local Window = WindUI:CreateWindow({
@@ -199,6 +201,21 @@ function Core.Init(mapName)
     return Window, WindUI
 end
 
+-- WindUI ไม่รองรับการปรับ Transparent หรือเปลี่ยนภาษาของ element ที่สร้างไปแล้วแบบเรียลไทม์
+-- (ทั้งสองอย่างมีผลแค่ตอน CreateWindow/Tab ครั้งแรกเท่านั้น) วิธีที่ทำได้จริงคือ
+-- ปิด Hub เดิมแล้วสร้างใหม่ทันทีด้วยค่าที่อัปเดตแล้ว ซึ่งจะรู้สึกเหมือนเปลี่ยนแบบสดๆ
+-- โดยไม่ต้องออกจากเกม
+function Core.Rebuild(OldWindow)
+    pcall(function()
+        OldWindow:Destroy()
+    end)
+
+    local NewWindow, NewWindUI = Core.Init(Core.MapName)
+    Core.Settings(NewWindow, NewWindUI)
+
+    return NewWindow, NewWindUI
+end
+
 function Core.Settings(Window, WindUI)
     local T = LANG[Core.Config.Language] or LANG.TH
     local Players = game:GetService("Players")
@@ -258,21 +275,18 @@ function Core.Settings(Window, WindUI)
         Values = { "TH", "EN" },
         Value = Core.Config.Language,
         Callback = function(selected)
+            if selected == Core.Config.Language then return end
             Core.Config.Language = selected
             SaveConfigToFile(Core.Config)
-            WindUI:Notify({
-                Title = T.language,
-                Content = T.languageSaved,
-                Duration = 3,
-            })
+            Core.Rebuild(Window)
         end,
     })
 
     -- ===== รูปลักษณ์ (ความโปร่งใส) =====
     -- หมายเหตุ: WindUI ไม่มีฟังก์ชันปรับความโปร่งใสระหว่างใช้งานจริง (ไม่มี
     -- Window:SetTransparency() ให้เรียก) ค่า Transparent เป็นได้แค่ true/false
-    -- และตั้งได้เฉพาะตอนสร้างหน้าต่างผ่าน WindUI:CreateWindow เท่านั้น
-    -- จึงเปลี่ยนจาก Slider (0-80) เป็น Toggle (เปิด/ปิด) แล้วบันทึกไว้ใช้ตอนเปิด Hub ครั้งถัดไป
+    -- และตั้งได้เฉพาะตอนสร้างหน้าต่างผ่าน WindUI:CreateWindow เท่านั้น จึงต้อง
+    -- ปิด Hub เดิมแล้วสร้างใหม่ทันที (Core.Rebuild) เพื่อให้เห็นผลแบบไม่ต้องรอ rejoin
     SettingsTab:Section({ Title = T.appearance, Desc = T.appearanceDesc })
 
     SettingsTab:Toggle({
@@ -281,11 +295,7 @@ function Core.Settings(Window, WindUI)
         Callback = function(state)
             Core.Config.Transparent = state
             SaveConfigToFile(Core.Config)
-            WindUI:Notify({
-                Title = T.appearance,
-                Content = T.transparencySaved,
-                Duration = 3,
-            })
+            Core.Rebuild(Window)
         end,
     })
 
