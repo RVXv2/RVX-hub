@@ -338,16 +338,27 @@ local function StartFly()
         local inputMagnitude = moveDir.Magnitude
         local camCFrame = camera.CFrame
 
-        local horizontal = Vector3.new(0, 0, 0)
         if inputMagnitude > 0.02 then
-            horizontal = moveDir.Unit * FlySpeed * inputMagnitude
+            -- ผสมทิศทางอินพุต (หน้า-หลัง/ซ้าย-ขวา) เข้ากับทิศทางกล้องแบบเต็มรูปแบบ
+            -- (รวมมุมก้ม-เงยด้วย) แทนการบวกความสูงจากมุมกล้องแยกต่างหากแบบเดิม
+            -- วิธีนี้ทำให้บินไปทิศที่มองจริงๆ เหมือนเครื่องบิน/นก และถ้าไม่ได้
+            -- กดเดินเลยจะลอยนิ่งอยู่กับที่ ไม่ขยับขึ้นลงเองแค่เพราะแหงนกล้อง
+            -- (ก่อนหน้านี้อ่าน camCFrame.LookVector.Y ตรงๆ ทำให้ลอยแม้ยืนเฉยๆ)
+            local flatRight = Vector3.new(camCFrame.RightVector.X, 0, camCFrame.RightVector.Z)
+            flatRight = flatRight.Magnitude > 0.001 and flatRight.Unit or Vector3.new(1, 0, 0)
+
+            local flatLook = Vector3.new(camCFrame.LookVector.X, 0, camCFrame.LookVector.Z)
+            flatLook = flatLook.Magnitude > 0.001 and flatLook.Unit or Vector3.new(0, 0, -1)
+
+            local forwardAmount = moveDir:Dot(flatLook)
+            local rightAmount = moveDir:Dot(flatRight)
+
+            local moveVector = (camCFrame.LookVector * forwardAmount) + (flatRight * rightAmount)
+            FlyBodyVelocity.Velocity = moveVector * FlySpeed
+        else
+            FlyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
         end
 
-        -- แนวตั้งแยกออกจากทิศเดินหน้า/ถอยหลังเสมอ ใช้มุมกล้องอย่างเดียว
-        -- เพื่อไม่ให้ถอยหลังแล้วความสูงถูกล็อค
-        local vertical = camCFrame.LookVector.Y * FlySpeed
-
-        FlyBodyVelocity.Velocity = horizontal + Vector3.new(0, vertical, 0)
         FlyBodyGyro.CFrame = camCFrame
     end)
 end
@@ -369,7 +380,7 @@ end
 
 MovementTab:Toggle({
     Title = "เปิดโหมดบิน",
-    Desc = "โยกจอยไปทางไหนก็บินไปทางนั้น เงย/ก้มกล้องเพื่อขึ้น-ลง แม้ถอยหลังก็ปรับความสูงได้",
+    Desc = "โยกจอยไปทางไหนก็บินไปทางนั้น มองไปทางไหนก็บินไปทางนั้นแบบธรรมชาติ (ยืนนิ่งจะลอยอยู่กับที่ ไม่ขยับเองแม้แหงนกล้อง)",
     Value = false,
     Callback = function(state)
         FlyEnabled = state
@@ -385,12 +396,33 @@ MovementTab:Toggle({
 
 MovementTab:Slider({
     Title = "ความเร็วบิน",
-    Desc = "ปรับความเร็วขณะบิน",
-    Value = { Min = 10, Max = 200, Default = 50 },
+    Desc = "ปรับความเร็วขณะบิน (หรือใส่ตัวเลขเองด้านล่างถ้าต้องการค่ามากกว่านี้)",
+    Value = { Min = 10, Max = 1000, Default = 50 },
     Callback = function(value)
         FlySpeed = value
     end,
 })
+
+-- ช่องกรอกตัวเลขความเร็วบินเอง ไว้ตั้งค่านอกช่วงของสไลเดอร์ (เช่น 5000+)
+-- ครอบ pcall ไว้เผื่อ WindUI บางเวอร์ชันใช้ syntax ของ Input ต่างไปเล็กน้อย
+pcall(function()
+    MovementTab:Input({
+        Title = "กำหนดความเร็วบินเอง",
+        Desc = "ใส่ตัวเลขตรงๆ ถ้าต้องการค่ามากกว่าสไลเดอร์ด้านบน",
+        Value = "50",
+        Placeholder = "เช่น 2000",
+        Type = "Number",
+        Callback = function(text)
+            local num = tonumber(text)
+            if num and num > 0 then
+                FlySpeed = math.clamp(num, 1, 1000000)
+                WindUI:Notify({ Title = "การเคลื่อนไหว", Content = "ตั้งความเร็วบินเป็น " .. tostring(FlySpeed), Duration = 2 })
+            else
+                WindUI:Notify({ Title = "ผิดพลาด", Content = "กรุณาใส่ตัวเลขที่มากกว่า 0", Duration = 3 })
+            end
+        end,
+    })
+end)
 
 LocalPlayer.CharacterAdded:Connect(function()
     task.wait(1)
