@@ -168,7 +168,7 @@ function Core.Init(mapName)
 
     local Window = WindUI:CreateWindow({
         Title = "RVX hub X " .. mapName,
-        Icon = "rbxassetid://125616092701976",
+        Icon = "rbxassetid://133248028721073",
         Theme = Core.Config.Theme,
         Transparent = Core.Config.Transparent,
     })
