@@ -1,7 +1,7 @@
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
 local Core = {}
-local HUB_VERSION = "v1.5"
+local HUB_VERSION = "v1.0"
 local CONFIG_FILE = "RVXHub_Config.json"
 
 local DEFAULT_CONFIG = {
@@ -12,30 +12,6 @@ local DEFAULT_CONFIG = {
     QuickCloseKey = "K",
 }
 
--- ยอมรับเฉพาะ key เหล่านี้จากไฟล์ config และเช็ค type ให้ตรงกับ default
-local CONFIG_VALIDATORS = {
-    Theme = function(v)
-        local valid = { Dark = true, Light = true, Emerald = true, Plant = true, Midnight = true, Violet = true, Rose = true, MonokaiPro = true }
-        return type(v) == "string" and valid[v] and v or nil
-    end,
-    AutoReconnect = function(v)
-        return type(v) == "boolean" and v or nil
-    end,
-    Language = function(v)
-        return (v == "TH" or v == "EN") and v or nil
-    end,
-    Transparency = function(v)
-        if type(v) ~= "number" then return nil end
-        if v < 0 then v = 0 end
-        if v > 80 then v = 80 end
-        return v
-    end,
-    QuickCloseKey = function(v)
-        local valid = { K = true, L = true, J = true, Insert = true, End = true, RightShift = true, F4 = true }
-        return type(v) == "string" and valid[v] and v or nil
-    end,
-}
-
 local LANG = {
     TH = {
         home = "หน้าแรก",
@@ -44,7 +20,6 @@ local LANG = {
         discord = "เข้าร่วม Discord",
         discordCopied = "คัดลอกลิงก์แล้ว",
         discordDesc = "วางในเบราว์เซอร์เพื่อเข้าร่วม Discord",
-        discordFallback = "คัดลอกอัตโนมัติไม่ได้ กรุณาพิมพ์ลิงก์เอง: ",
         settings = "การตั้งค่า",
         general = "การตั้งค่าทั่วไป",
         generalDesc = "ปรับแต่งการทำงานของ Hub",
@@ -80,7 +55,6 @@ local LANG = {
         discord = "Join Discord",
         discordCopied = "Link copied",
         discordDesc = "Paste it in your browser to join Discord",
-        discordFallback = "Couldn't copy automatically. Please copy this link manually: ",
         settings = "Settings",
         general = "General Settings",
         generalDesc = "Customize how the Hub works",
@@ -117,35 +91,18 @@ local function LoadConfig()
         cfg[k] = v
     end
 
-    local needsResave = false
-
     if isfile and isfile(CONFIG_FILE) then
         local ok, data = pcall(function()
             return game:GetService("HttpService"):JSONDecode(readfile(CONFIG_FILE))
         end)
-        if ok and type(data) == "table" then
-            for k, validate in pairs(CONFIG_VALIDATORS) do
-                local raw = data[k]
-                if raw == nil then
-                    -- field ขาดหายจากไฟล์เก่า -> ใช้ default แล้วบันทึกกลับ
-                    needsResave = true
-                else
-                    local clean = validate(raw)
-                    if clean == nil then
-                        -- ค่าผิด type/ไม่รู้จัก -> ใช้ default แล้วบันทึกกลับ
-                        needsResave = true
-                    else
-                        cfg[k] = clean
-                    end
-                end
+        if ok and data then
+            for k, v in pairs(data) do
+                cfg[k] = v
             end
-        else
-            -- ไฟล์เสีย/parse ไม่ได้ -> ใช้ default ทั้งหมดแล้วบันทึกทับ
-            needsResave = true
         end
     end
 
-    return cfg, needsResave
+    return cfg
 end
 
 local function SaveConfigToFile(cfg)
@@ -156,83 +113,16 @@ local function SaveConfigToFile(cfg)
     end
 end
 
-do
-    local cfg, needsResave = LoadConfig()
-    Core.Config = cfg
-    if needsResave then
-        SaveConfigToFile(Core.Config)
-    end
-end
-
--- ===== สไตล์: ชื่อ Hub ไล่สีม่วง-ขาว + พื้นหลังม่วงเข้มบนไล่ใสล่าง =====
-local TITLE_TEXT_GRADIENT = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromHex("#B39CFF")),   -- ม่วงอ่อน
-    ColorSequenceKeypoint.new(0.5, Color3.fromHex("#8A5CFF")), -- ม่วงสด
-    ColorSequenceKeypoint.new(1, Color3.fromHex("#FFFFFF")),   -- ขาว
-})
-
-local function TryGetWindowBackground()
-    -- WindUI รองรับพื้นหลังแบบ gradient ผ่าน WindUI:Gradient() โดยตรง
-    local ok, bg = pcall(function()
-        return WindUI:Gradient({
-            ["0"] = { Color = Color3.fromHex("#150826"), Transparency = 0 },   -- บน: ม่วงเข้มทึบ
-            ["100"] = { Color = Color3.fromHex("#C9B8FF"), Transparency = 0.75 }, -- ล่าง: ม่วงอ่อนโปร่งใส
-        }, {
-            Rotation = 90, -- แนวตั้ง บน -> ล่าง
-        })
-    end)
-    if ok then
-        return bg
-    end
-    return nil
-end
-
--- Best-effort: หา TextLabel ของ Title ที่ WindUI สร้างขึ้นจริงใน PlayerGui แล้วใส่ gradient
--- ห่อด้วย pcall ทั้งหมดเพราะเป็นการอิงโครงสร้างภายในของ lib ซึ่งอาจเปลี่ยนได้ตามเวอร์ชัน
-local function TryStyleTitleText(titleString)
-    task.spawn(function()
-        task.wait(0.5) -- รอให้ WindUI สร้าง GUI เสร็จก่อน
-        pcall(function()
-            local Players = game:GetService("Players")
-            local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
-
-            for _, gui in ipairs(playerGui:GetChildren()) do
-                if gui:IsA("ScreenGui") then
-                    for _, obj in ipairs(gui:GetDescendants()) do
-                        if obj:IsA("TextLabel") and obj.Text == titleString then
-                            local gradient = obj:FindFirstChildOfClass("UIGradient")
-                            if not gradient then
-                                gradient = Instance.new("UIGradient")
-                                gradient.Parent = obj
-                            end
-                            gradient.Color = TITLE_TEXT_GRADIENT
-                            obj.TextColor3 = Color3.fromHex("#FFFFFF")
-                        end
-                    end
-                end
-            end
-        end)
-    end)
-end
+Core.Config = LoadConfig()
 
 function Core.Init(mapName)
     local T = LANG[Core.Config.Language] or LANG.TH
-    local windowTitle = "RVX hub X " .. mapName
 
-    local windowOptions = {
-        Title = windowTitle,
+    local Window = WindUI:CreateWindow({
+        Title = "RVX hub X " .. mapName,
         Icon = "rbxassetid://125616092701976",
         Theme = Core.Config.Theme,
-    }
-
-    local bg = TryGetWindowBackground()
-    if bg then
-        windowOptions.Background = bg
-    end
-
-    local Window = WindUI:CreateWindow(windowOptions)
-
-    TryStyleTitleText(windowTitle)
+    })
 
     local Players = game:GetService("Players")
     local LocalPlayer = Players.LocalPlayer
@@ -276,50 +166,30 @@ function Core.Init(mapName)
         Title = T.discord,
         Icon = "message-circle",
         Callback = function()
-            local discordLink = "hhttps://discord.gg/WQePykh3yJ"
-            local copied = false
             if setclipboard then
-                local ok = pcall(setclipboard, discordLink)
-                copied = ok
+                setclipboard("https://discord.gg/YOUR-INVITE-CODE")
             end
-
-            if copied then
-                WindUI:Notify({
-                    Title = T.discordCopied,
-                    Content = T.discordDesc,
-                    Duration = 3,
-                })
-            else
-                WindUI:Notify({
-                    Title = T.discord,
-                    Content = T.discordFallback .. discordLink,
-                    Duration = 6,
-                })
-            end
+            WindUI:Notify({
+                Title = T.discordCopied,
+                Content = T.discordDesc,
+                Duration = 3,
+            })
         end,
     })
 
     -- ===== ปุ่มลัดปิด Hub =====
     local UserInputService = game:GetService("UserInputService")
-    local quickCloseConn
-    quickCloseConn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    UserInputService.InputBegan:Connect(function(input, gameProcessed)
         if gameProcessed then return end
         if input.UserInputType == Enum.UserInputType.Keyboard then
             local keyEnum = Enum.KeyCode[Core.Config.QuickCloseKey]
             if keyEnum and input.KeyCode == keyEnum then
-                if quickCloseConn then
-                    quickCloseConn:Disconnect()
-                    quickCloseConn = nil
-                end
                 pcall(function()
                     Window:Destroy()
                 end)
             end
         end
     end)
-
-    -- เก็บ connection ไว้ใน Core เผื่อต้อง disconnect จากที่อื่น (เช่นปุ่ม "ปิด Hub" ใน Settings)
-    Core._quickCloseConn = quickCloseConn
 
     return Window, WindUI
 end
@@ -382,7 +252,7 @@ function Core.Settings(Window, WindUI)
         end,
     })
 
-    -- ===== รูปลักษณ์ =====
+    -- ===== รูปลักษณ์ (ความโปร่งใส) =====
     SettingsTab:Section({ Title = T.appearance, Desc = T.appearanceDesc })
 
     SettingsTab:Slider({
@@ -434,12 +304,6 @@ function Core.Settings(Window, WindUI)
 
     local function CreateStatsOverlay()
         local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
-
-        -- เผื่อมี overlay ค้างจาก session ก่อนหน้า (เช่น re-execute script)
-        local existing = playerGui:FindFirstChild("RVXStatsOverlay")
-        if existing then
-            existing:Destroy()
-        end
 
         StatsGui = Instance.new("ScreenGui")
         StatsGui.Name = "RVXStatsOverlay"
@@ -548,10 +412,6 @@ function Core.Settings(Window, WindUI)
         Icon = "x",
         Callback = function()
             DestroyStatsOverlay()
-            if Core._quickCloseConn then
-                Core._quickCloseConn:Disconnect()
-                Core._quickCloseConn = nil
-            end
             Window:Destroy()
         end,
     })
