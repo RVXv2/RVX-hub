@@ -6,7 +6,7 @@ local playerGui = player:WaitForChild("PlayerGui")
 
 local Intro = {}
 
-local LOGO_ID = "rbxassetid://125616092701976"
+local LOGO_ID = "rbxassetid://133248028721073"
 
 -- ===== หน้า Splash โลโก้ (ขึ้นก่อนทุกอย่าง) =====
 local function ShowSplash()
