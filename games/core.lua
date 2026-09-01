@@ -4,6 +4,48 @@ local Core = {}
 local HUB_VERSION = "v1.0"
 local CONFIG_FILE = "RVXHub_Config.json"
 
+-- ===== ป้องกันการสร้าง Hub ซ้อนกันหลายอันเวลารันสคริปต์ซ้ำ =====
+-- ใช้ getgenv()/_G เก็บ reference ของ instance ก่อนหน้าไว้ (persist ข้ามการรันสคริปต์
+-- ในเซสชันเดียวกัน ต่างจากตัวแปร local ที่จะหายไปทุกครั้งที่รันสคริปต์ใหม่)
+-- ทุกครั้งที่โหลดสคริปต์นี้ จะเช็คแล้วทำลาย instance เดิมทิ้งก่อนเสมอ
+-- เพื่อให้เหลือ Hub อยู่แค่ 1 อันตลอด ไม่ว่าจะกด/รันกี่ครั้งก็ตาม
+local GlobalStore = (type(getgenv) == "function" and getgenv()) or _G
+
+local function RVXHub_Cleanup()
+    local prev = GlobalStore.__RVXHub_Instance
+    if not prev then return end
+
+    pcall(function()
+        if prev.InputConnection then
+            prev.InputConnection:Disconnect()
+        end
+    end)
+
+    pcall(function()
+        if prev.StatsConnection then
+            prev.StatsConnection:Disconnect()
+        end
+    end)
+
+    pcall(function()
+        if prev.StatsGui then
+            prev.StatsGui:Destroy()
+        end
+    end)
+
+    pcall(function()
+        if prev.Window then
+            prev.Window:Destroy()
+        end
+    end)
+
+    GlobalStore.__RVXHub_Instance = nil
+end
+
+-- ทำลาย Hub จากการรันครั้งก่อน (ถ้ามี) ก่อนเริ่มสร้างของใหม่
+RVXHub_Cleanup()
+GlobalStore.__RVXHub_Instance = {}
+
 local DEFAULT_CONFIG = {
     Theme = "Violet",
     AutoReconnect = false,
@@ -131,6 +173,9 @@ function Core.Init(mapName)
         Transparent = Core.Config.Transparent,
     })
 
+    GlobalStore.__RVXHub_Instance = GlobalStore.__RVXHub_Instance or {}
+    GlobalStore.__RVXHub_Instance.Window = Window
+
     local Players = game:GetService("Players")
     local LocalPlayer = Players.LocalPlayer
 
@@ -184,19 +229,36 @@ function Core.Init(mapName)
         end,
     })
 
-    -- ===== ปุ่มลัดปิด Hub =====
+    -- ===== ปุ่มลัดซ่อน/เปิด Hub =====
+    -- เดิมใช้ Window:Destroy() ซึ่ง "ทำลาย" หน้าต่างถาวร กดแล้วเรียกกลับมาไม่ได้
+    -- เปลี่ยนเป็น Toggle เพื่อให้กดปุ่มเดิมซ้ำแล้วเปิด Hub กลับมาได้เอง
     local UserInputService = game:GetService("UserInputService")
-    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    local inputConnection
+    inputConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
         if gameProcessed then return end
         if input.UserInputType == Enum.UserInputType.Keyboard then
             local keyEnum = Enum.KeyCode[Core.Config.QuickCloseKey]
             if keyEnum and input.KeyCode == keyEnum then
+                local toggled = false
                 pcall(function()
-                    Window:Destroy()
+                    Window:Toggle()
+                    toggled = true
                 end)
+                if not toggled then
+                    -- เผื่อ WindUI เวอร์ชันที่ใช้ไม่มี :Toggle() ให้ลอง Open/Close แยก
+                    pcall(function()
+                        if Window.Visible then
+                            Window:Close()
+                        else
+                            Window:Open()
+                        end
+                    end)
+                end
             end
         end
     end)
+
+    GlobalStore.__RVXHub_Instance.InputConnection = inputConnection
 
     return Window, WindUI
 end
@@ -205,15 +267,32 @@ end
 -- (ทั้งสองอย่างมีผลแค่ตอน CreateWindow/Tab ครั้งแรกเท่านั้น) วิธีที่ทำได้จริงคือ
 -- ปิด Hub เดิมแล้วสร้างใหม่ทันทีด้วยค่าที่อัปเดตแล้ว ซึ่งจะรู้สึกเหมือนเปลี่ยนแบบสดๆ
 -- โดยไม่ต้องออกจากเกม
-function Core.Rebuild(OldWindow)
-    pcall(function()
-        OldWindow:Destroy()
+--
+-- สำคัญ: ต้องรัน task.spawn() แยก thread เพราะถ้า Destroy + Init ใหม่ทำงาน
+-- "ทันที" ในคอลแบ็คของปุ่ม/ดรอปดาวน์เดิม แล้วข้างใน Core.Init มีการเรียก
+-- Players:GetUserThumbnailAsync() ซึ่งต้อง yield รอผลลัพธ์ บาง WindUI/executor
+-- จะ error แบบเงียบ (yield ข้าม callback boundary ไม่ได้) ทำให้ Destroy สำเร็จ
+-- แต่สร้างใหม่ไม่ทันเสร็จ เลยดูเหมือน Hub หายไปเฉยๆ ไม่ขึ้นมาใหม่
+--
+-- ใช้ RVXHub_Cleanup() (ตัวเดียวกับที่กันการรันซ้ำ) แทนการ Destroy แค่ Window
+-- เฉยๆ เพื่อเคลียร์ input-connection และ stats overlay เก่าไปด้วย ไม่งั้นจะค้าง
+-- สะสมทุกครั้งที่กดเปลี่ยนภาษา/โปร่งใส
+function Core.Rebuild()
+    task.spawn(function()
+        RVXHub_Cleanup()
+        GlobalStore.__RVXHub_Instance = {}
+
+        task.wait() -- ให้ instance เก่าถูกทำลายเสร็จสมบูรณ์ก่อนสร้างหน้าต่างใหม่
+
+        local ok, err = pcall(function()
+            local NewWindow, NewWindUI = Core.Init(Core.MapName)
+            Core.Settings(NewWindow, NewWindUI)
+        end)
+
+        if not ok then
+            warn("[RVX Hub] Rebuild failed: " .. tostring(err))
+        end
     end)
-
-    local NewWindow, NewWindUI = Core.Init(Core.MapName)
-    Core.Settings(NewWindow, NewWindUI)
-
-    return NewWindow, NewWindUI
 end
 
 function Core.Settings(Window, WindUI)
@@ -370,6 +449,10 @@ function Core.Settings(Window, WindUI)
                 end)
             end
         end)
+
+        GlobalStore.__RVXHub_Instance = GlobalStore.__RVXHub_Instance or {}
+        GlobalStore.__RVXHub_Instance.StatsGui = StatsGui
+        GlobalStore.__RVXHub_Instance.StatsConnection = StatsConnection
     end
 
     local function DestroyStatsOverlay()
@@ -380,6 +463,10 @@ function Core.Settings(Window, WindUI)
         if StatsGui then
             StatsGui:Destroy()
             StatsGui = nil
+        end
+        if GlobalStore.__RVXHub_Instance then
+            GlobalStore.__RVXHub_Instance.StatsGui = nil
+            GlobalStore.__RVXHub_Instance.StatsConnection = nil
         end
     end
 
@@ -427,7 +514,7 @@ function Core.Settings(Window, WindUI)
         Icon = "x",
         Callback = function()
             DestroyStatsOverlay()
-            Window:Destroy()
+            RVXHub_Cleanup()
         end,
     })
 end
