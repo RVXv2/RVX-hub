@@ -8,7 +8,7 @@ local DEFAULT_CONFIG = {
     Theme = "Violet",
     AutoReconnect = false,
     Language = "TH",
-    Transparency = 0,
+    Transparent = false,
     QuickCloseKey = "K",
 }
 
@@ -31,8 +31,10 @@ local LANG = {
         language = "ภาษา",
         languageDesc = "มีผลกับหน้าแรกและการตั้งค่า (ต้องเข้าเกมใหม่ถึงจะเห็นผลเต็มที่)",
         appearance = "รูปลักษณ์",
-        appearanceDesc = "ปรับความโปร่งใสของหน้าต่าง Hub",
-        transparency = "ความโปร่งใส",
+        appearanceDesc = "ปรับความโปร่งใสของหน้าต่าง Hub (มีผลหลังปิด-เปิด Hub ใหม่)",
+        transparency = "หน้าต่างโปร่งใส",
+        transparencySaved = "บันทึกแล้ว จะมีผลตอนเปิด Hub ครั้งถัดไป",
+        languageSaved = "บันทึกภาษาแล้ว เข้าเกมใหม่เพื่อให้มีผลเต็มที่",
         keybindSection = "ปุ่มลัด",
         keybindDesc = "เลือกปุ่มสำหรับปิด Hub อย่างเร็ว",
         quickCloseKey = "ปุ่มปิดด่วน",
@@ -66,8 +68,10 @@ local LANG = {
         language = "Language",
         languageDesc = "Affects Home and Settings tabs (rejoin for full effect)",
         appearance = "Appearance",
-        appearanceDesc = "Adjust the Hub window transparency",
-        transparency = "Transparency",
+        appearanceDesc = "Adjust the Hub window transparency (applies next time you open the Hub)",
+        transparency = "Transparent window",
+        transparencySaved = "Saved. Applies the next time the Hub opens.",
+        languageSaved = "Language saved. Rejoin for full effect.",
         keybindSection = "Keybind",
         keybindDesc = "Choose a key to quickly close the Hub",
         quickCloseKey = "Quick close key",
@@ -122,6 +126,7 @@ function Core.Init(mapName)
         Title = "RVX hub X " .. mapName,
         Icon = "rbxassetid://125616092701976",
         Theme = Core.Config.Theme,
+        Transparent = Core.Config.Transparent,
     })
 
     local Players = game:GetService("Players")
@@ -254,38 +259,33 @@ function Core.Settings(Window, WindUI)
         Value = Core.Config.Language,
         Callback = function(selected)
             Core.Config.Language = selected
+            SaveConfigToFile(Core.Config)
+            WindUI:Notify({
+                Title = T.language,
+                Content = T.languageSaved,
+                Duration = 3,
+            })
         end,
     })
 
     -- ===== รูปลักษณ์ (ความโปร่งใส) =====
+    -- หมายเหตุ: WindUI ไม่มีฟังก์ชันปรับความโปร่งใสระหว่างใช้งานจริง (ไม่มี
+    -- Window:SetTransparency() ให้เรียก) ค่า Transparent เป็นได้แค่ true/false
+    -- และตั้งได้เฉพาะตอนสร้างหน้าต่างผ่าน WindUI:CreateWindow เท่านั้น
+    -- จึงเปลี่ยนจาก Slider (0-80) เป็น Toggle (เปิด/ปิด) แล้วบันทึกไว้ใช้ตอนเปิด Hub ครั้งถัดไป
     SettingsTab:Section({ Title = T.appearance, Desc = T.appearanceDesc })
 
-    SettingsTab:Slider({
+    SettingsTab:Toggle({
         Title = T.transparency,
-        Value = { Min = 0, Max = 80, Default = Core.Config.Transparency },
-        Callback = function(value)
-            Core.Config.Transparency = value
-            local applied = false
-
-            pcall(function()
-                Window:SetTransparency(value / 100)
-                applied = true
-            end)
-
-            if not applied then
-                pcall(function()
-                    Window.Transparency = value / 100
-                    applied = true
-                end)
-            end
-
-            if not applied then
-                WindUI:Notify({
-                    Title = T.appearance,
-                    Content = T.transparencyUnsupported,
-                    Duration = 3,
-                })
-            end
+        Value = Core.Config.Transparent,
+        Callback = function(state)
+            Core.Config.Transparent = state
+            SaveConfigToFile(Core.Config)
+            WindUI:Notify({
+                Title = T.appearance,
+                Content = T.transparencySaved,
+                Duration = 3,
+            })
         end,
     })
 
