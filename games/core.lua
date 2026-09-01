@@ -71,12 +71,12 @@ local LANG = {
         autoreconnect = "Auto Reconnect",
         autoreconnectDesc = "เข้าเกมใหม่อัตโนมัติถ้าหลุดเซิร์ฟเวอร์",
         language = "ภาษา",
-        languageDesc = "มีผลกับหน้าแรกและการตั้งค่าทันที (Hub จะรีเฟรชตัวเองสั้นๆ)",
+        languageDesc = "มีผลกับหน้าแรกและการตั้งค่าหลังรันสคริปต์ใหม่",
         appearance = "รูปลักษณ์",
-        appearanceDesc = "ปรับความโปร่งใสของหน้าต่าง Hub (มีผลทันที Hub จะรีเฟรชตัวเองสั้นๆ)",
+        appearanceDesc = "ปรับความโปร่งใสของหน้าต่าง Hub (มีผลหลังรันสคริปต์ใหม่)",
         transparency = "หน้าต่างโปร่งใส",
-        transparencySaved = "บันทึกแล้ว จะมีผลตอนเปิด Hub ครั้งถัดไป",
-        languageSaved = "บันทึกภาษาแล้ว เข้าเกมใหม่เพื่อให้มีผลเต็มที่",
+        transparencySaved = "บันทึกแล้ว รันสคริปต์ใหม่เพื่อให้มีผล",
+        languageSaved = "บันทึกภาษาแล้ว รันสคริปต์ใหม่เพื่อให้มีผล",
         keybindSection = "ปุ่มลัด",
         keybindDesc = "เลือกปุ่มสำหรับปิด Hub อย่างเร็ว",
         quickCloseKey = "ปุ่มปิดด่วน",
@@ -108,12 +108,12 @@ local LANG = {
         autoreconnect = "Auto Reconnect",
         autoreconnectDesc = "Auto rejoin if you get disconnected",
         language = "Language",
-        languageDesc = "Affects Home and Settings tabs immediately (the Hub briefly refreshes)",
+        languageDesc = "Affects Home and Settings tabs after you rerun the script",
         appearance = "Appearance",
-        appearanceDesc = "Adjust the Hub window transparency (applies instantly, Hub briefly refreshes)",
+        appearanceDesc = "Adjust the Hub window transparency (applies after you rerun the script)",
         transparency = "Transparent window",
-        transparencySaved = "Saved. Applies the next time the Hub opens.",
-        languageSaved = "Language saved. Rejoin for full effect.",
+        transparencySaved = "Saved. Rerun the script for it to take effect.",
+        languageSaved = "Language saved. Rerun the script for it to take effect.",
         keybindSection = "Keybind",
         keybindDesc = "Choose a key to quickly close the Hub",
         quickCloseKey = "Quick close key",
@@ -263,38 +263,6 @@ function Core.Init(mapName)
     return Window, WindUI
 end
 
--- WindUI ไม่รองรับการปรับ Transparent หรือเปลี่ยนภาษาของ element ที่สร้างไปแล้วแบบเรียลไทม์
--- (ทั้งสองอย่างมีผลแค่ตอน CreateWindow/Tab ครั้งแรกเท่านั้น) วิธีที่ทำได้จริงคือ
--- ปิด Hub เดิมแล้วสร้างใหม่ทันทีด้วยค่าที่อัปเดตแล้ว ซึ่งจะรู้สึกเหมือนเปลี่ยนแบบสดๆ
--- โดยไม่ต้องออกจากเกม
---
--- สำคัญ: ต้องรัน task.spawn() แยก thread เพราะถ้า Destroy + Init ใหม่ทำงาน
--- "ทันที" ในคอลแบ็คของปุ่ม/ดรอปดาวน์เดิม แล้วข้างใน Core.Init มีการเรียก
--- Players:GetUserThumbnailAsync() ซึ่งต้อง yield รอผลลัพธ์ บาง WindUI/executor
--- จะ error แบบเงียบ (yield ข้าม callback boundary ไม่ได้) ทำให้ Destroy สำเร็จ
--- แต่สร้างใหม่ไม่ทันเสร็จ เลยดูเหมือน Hub หายไปเฉยๆ ไม่ขึ้นมาใหม่
---
--- ใช้ RVXHub_Cleanup() (ตัวเดียวกับที่กันการรันซ้ำ) แทนการ Destroy แค่ Window
--- เฉยๆ เพื่อเคลียร์ input-connection และ stats overlay เก่าไปด้วย ไม่งั้นจะค้าง
--- สะสมทุกครั้งที่กดเปลี่ยนภาษา/โปร่งใส
-function Core.Rebuild()
-    task.spawn(function()
-        RVXHub_Cleanup()
-        GlobalStore.__RVXHub_Instance = {}
-
-        task.wait() -- ให้ instance เก่าถูกทำลายเสร็จสมบูรณ์ก่อนสร้างหน้าต่างใหม่
-
-        local ok, err = pcall(function()
-            local NewWindow, NewWindUI = Core.Init(Core.MapName)
-            Core.Settings(NewWindow, NewWindUI)
-        end)
-
-        if not ok then
-            warn("[RVX Hub] Rebuild failed: " .. tostring(err))
-        end
-    end)
-end
-
 function Core.Settings(Window, WindUI)
     local T = LANG[Core.Config.Language] or LANG.TH
     local Players = game:GetService("Players")
@@ -347,6 +315,9 @@ function Core.Settings(Window, WindUI)
     end)
 
     -- ===== ภาษา =====
+    -- หมายเหตุ: ตัด Core.Rebuild ออกแล้ว (เดิมพัง/หายบ่อยเพราะ yield ข้าม
+    -- callback boundary ตอน Destroy+CreateWindow ใหม่ทันที) ตอนนี้แค่บันทึกค่า
+    -- ลงไฟล์แล้วแจ้งเตือนให้รันสคริปต์ใหม่เพื่อให้มีผล เหมือนปุ่ม "รีเซ็ต"
     SettingsTab:Section({ Title = T.language, Desc = T.languageDesc })
 
     SettingsTab:Dropdown({
@@ -357,15 +328,16 @@ function Core.Settings(Window, WindUI)
             if selected == Core.Config.Language then return end
             Core.Config.Language = selected
             SaveConfigToFile(Core.Config)
-            Core.Rebuild(Window)
+            WindUI:Notify({ Title = T.settings, Content = T.languageSaved, Duration = 4 })
         end,
     })
 
     -- ===== รูปลักษณ์ (ความโปร่งใส) =====
     -- หมายเหตุ: WindUI ไม่มีฟังก์ชันปรับความโปร่งใสระหว่างใช้งานจริง (ไม่มี
     -- Window:SetTransparency() ให้เรียก) ค่า Transparent เป็นได้แค่ true/false
-    -- และตั้งได้เฉพาะตอนสร้างหน้าต่างผ่าน WindUI:CreateWindow เท่านั้น จึงต้อง
-    -- ปิด Hub เดิมแล้วสร้างใหม่ทันที (Core.Rebuild) เพื่อให้เห็นผลแบบไม่ต้องรอ rejoin
+    -- และตั้งได้เฉพาะตอนสร้างหน้าต่างผ่าน WindUI:CreateWindow เท่านั้น จึงแค่
+    -- บันทึกค่าไว้แล้วแจ้งให้รันสคริปต์ใหม่เพื่อให้มีผล ไม่มีการ Destroy+สร้างใหม่
+    -- อัตโนมัติอีกต่อไป
     SettingsTab:Section({ Title = T.appearance, Desc = T.appearanceDesc })
 
     SettingsTab:Toggle({
@@ -374,7 +346,7 @@ function Core.Settings(Window, WindUI)
         Callback = function(state)
             Core.Config.Transparent = state
             SaveConfigToFile(Core.Config)
-            Core.Rebuild(Window)
+            WindUI:Notify({ Title = T.settings, Content = T.transparencySaved, Duration = 4 })
         end,
     })
 
