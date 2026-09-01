@@ -409,6 +409,54 @@ LocalPlayer.CharacterAdded:Connect(function()
     end
 end)
 
+MovementTab:Section({ Title = "ทะลุทุกอย่าง", Desc = "เดิน/บินทะลุกำแพงและวัตถุทุกชนิดในแมพได้" })
+
+local NoclipEnabled = false
+local NoclipConnection = nil
+
+local function SetCollide(state)
+    local char = LocalPlayer.Character
+    if not char then return end
+    for _, v in ipairs(char:GetDescendants()) do
+        if v:IsA("BasePart") then
+            v.CanCollide = state
+        end
+    end
+end
+
+MovementTab:Toggle({
+    Title = "ทะลุทุกอย่าง (Noclip)",
+    Desc = "ปิดการชนกับทุกวัตถุในแมพ เดิน/บินทะลุกำแพงได้",
+    Value = false,
+    Callback = function(state)
+        NoclipEnabled = state
+        if state then
+            if NoclipConnection then NoclipConnection:Disconnect() end
+            NoclipConnection = RunService.Stepped:Connect(function()
+                SetCollide(false)
+            end)
+            WindUI:Notify({ Title = "การเคลื่อนไหว", Content = "เปิดทะลุทุกอย่างแล้ว", Duration = 2 })
+        else
+            if NoclipConnection then
+                NoclipConnection:Disconnect()
+                NoclipConnection = nil
+            end
+            SetCollide(true)
+            WindUI:Notify({ Title = "การเคลื่อนไหว", Content = "ปิดทะลุทุกอย่างแล้ว", Duration = 2 })
+        end
+    end,
+})
+
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(1)
+    if NoclipEnabled then
+        if NoclipConnection then NoclipConnection:Disconnect() end
+        NoclipConnection = RunService.Stepped:Connect(function()
+            SetCollide(false)
+        end)
+    end
+end)
+
 MovementTab:Section({ Title = "ล็อคตำแหน่ง", Desc = "ค้างตัวละครอยู่กับที่ แต่ยังเปลี่ยนท่าทาง/เล่นแอนิเมชันได้" })
 
 local PositionLocked = false
