@@ -4,6 +4,21 @@ local Core = {}
 local HUB_VERSION = "v1.0"
 local CONFIG_FILE = "RVXHub_Config.json"
 
+-- ลิงก์ raw ของไฟล์ RVXHub_Scripts.lua (ต้องอัปโหลดไฟล์นั้นขึ้น host เอง
+-- เช่น GitHub raw) แล้วแก้ URL ด้านล่างให้ตรงกับที่อัปไว้จริง
+local SCRIPTS_MODULE_URL = "https://raw.githubusercontent.com/USERNAME/REPO/main/RVXHub_Scripts.lua"
+
+-- ===== ข้อความ Changelog (แก้ตรงนี้ที่เดียว ไม่ต้องไปหาในโค้ด) =====
+-- Notes แต่ละบรรทัดจะถูกต่อกันด้วยขึ้นบรรทัดใหม่ในหน้าแรก
+local CHANGELOG = {
+    Version = "1.0",
+    Notes = {
+        "- เปิดตัว RVX Hub เวอร์ชันแรก",
+        "- เพิ่มแท็บ Scripts สำหรับรันสคริปต์ภายนอก",
+        "- ปรับการเปลี่ยนภาษา/ความโปร่งใสให้บันทึกค่าแล้วแจ้งให้รันสคริปต์ใหม่",
+    },
+}
+
 -- ===== ป้องกันการสร้าง Hub ซ้อนกันหลายอันเวลารันสคริปต์ซ้ำ =====
 -- ใช้ getgenv()/_G เก็บ reference ของ instance ก่อนหน้าไว้ (persist ข้ามการรันสคริปต์
 -- ในเซสชันเดียวกัน ต่างจากตัวแปร local ที่จะหายไปทุกครั้งที่รันสคริปต์ใหม่)
@@ -91,6 +106,18 @@ local LANG = {
         resetMsg = "รีเซ็ตเรียบร้อยแล้ว เข้าเกมใหม่เพื่อให้มีผลเต็มที่",
         closehub = "ปิด Hub",
         transparencyUnsupported = "WindUI เวอร์ชันนี้ยังไม่รองรับการปรับความโปร่งใส",
+        scripts = "สคริปต์",
+        scriptsSection = "สคริปต์ภายนอก",
+        scriptsSectionDesc = "กดปุ่มเพื่อรันสคริปต์แต่ละตัว",
+        scriptsEmptyTitle = "ยังไม่มีสคริปต์",
+        scriptsEmptyDesc = "เพิ่มรายการได้ในไฟล์ RVXHub_Scripts.lua",
+        scriptsLoadFailTitle = "โหลดแท็บ Scripts ไม่สำเร็จ",
+        scriptsLoadFailDesc = "ตรวจสอบ SCRIPTS_MODULE_URL หรือการเชื่อมต่ออินเทอร์เน็ต",
+        scriptRan = "รันสคริปต์แล้ว",
+        scriptError = "รันไม่สำเร็จ: ",
+        changelogSection = "ประกาศอัปเดต",
+        changelogSectionDesc = "สิ่งที่เปลี่ยนแปลงล่าสุดใน Hub",
+        changelogTitlePrefix = "อัปเดตเวอร์ชัน ",
     },
     EN = {
         home = "Home",
@@ -128,6 +155,18 @@ local LANG = {
         resetMsg = "Reset done. Rejoin for full effect.",
         closehub = "Close Hub",
         transparencyUnsupported = "This WindUI version does not support transparency yet",
+        scripts = "Scripts",
+        scriptsSection = "External Scripts",
+        scriptsSectionDesc = "Tap a button to run that script",
+        scriptsEmptyTitle = "No scripts yet",
+        scriptsEmptyDesc = "Add entries in RVXHub_Scripts.lua",
+        scriptsLoadFailTitle = "Failed to load Scripts tab",
+        scriptsLoadFailDesc = "Check SCRIPTS_MODULE_URL or your internet connection",
+        scriptRan = "Script executed",
+        scriptError = "Failed to run: ",
+        changelogSection = "What's New",
+        changelogSectionDesc = "Latest changes in this Hub",
+        changelogTitlePrefix = "Version ",
     },
 }
 
@@ -169,6 +208,7 @@ function Core.Init(mapName)
     local Window = WindUI:CreateWindow({
         Title = "RVX hub X " .. mapName,
         Icon = "rbxassetid://95844711546407",
+        IconSize = 32, -- ค่า default เล็กมองไม่ค่อยชัด ปรับให้ใหญ่ขึ้น (ลอง 40-44 ได้ถ้ายังเล็กไป)
         Theme = Core.Config.Theme,
         Transparent = Core.Config.Transparent,
     })
@@ -181,25 +221,25 @@ function Core.Init(mapName)
 
     local HomeTab = Window:Tab({ Title = T.home, Icon = "house" })
 
-    local ProfileSection = HomeTab:Section({ Title = T.profileSection, Desc = mapName })
+    HomeTab:Section({ Title = T.profileSection, Desc = mapName })
 
-    local content = Players:GetUserThumbnailAsync(
-        LocalPlayer.UserId,
-        Enum.ThumbnailType.HeadShot,
-        Enum.ThumbnailSize.Size420x420
-    )
-
-    ProfileSection:Image({
-        Image = content,
-        AspectRatio = "1:1",
-        Radius = 12,
-    })
-
-    ProfileSection:Space()
+    -- หมายเหตุ: WindUI ไม่มี method "Section:Image()" จริง (เช็คจาก docs แล้ว
+    -- ไม่มี element ชื่อ Image เลย) เดิมเรียก ProfileSection:Image({...}) จึงไม่ทำ
+    -- อะไรเลย รูปโปรไฟล์เลยไม่ขึ้น วิธีที่ถูกต้องคือใช้ Paragraph ที่มี field
+    -- Thumbnail/ThumbnailSize ในตัว (ดู docs: footagesus.github.io/WindUI-Docs/docs/paragraph)
+    local thumbOk, thumbContent = pcall(function()
+        return Players:GetUserThumbnailAsync(
+            LocalPlayer.UserId,
+            Enum.ThumbnailType.HeadShot,
+            Enum.ThumbnailSize.Size420x420
+        )
+    end)
 
     HomeTab:Paragraph({
         Title = LocalPlayer.DisplayName,
         Desc = "@" .. LocalPlayer.Name .. "  |  UserId: " .. LocalPlayer.UserId,
+        Thumbnail = thumbOk and thumbContent or "rbxassetid://0",
+        ThumbnailSize = 60,
     })
 
     HomeTab:Button({
@@ -212,6 +252,15 @@ function Core.Init(mapName)
                 Duration = 3,
             })
         end,
+    })
+
+    -- ===== ประกาศอัปเดต (Changelog) =====
+    -- แก้ข้อความได้ที่ CHANGELOG ตัวแปรเดียว ด้านบนไฟล์ ไม่ต้องมาแก้ตรงนี้อีก
+    HomeTab:Section({ Title = T.changelogSection, Desc = T.changelogSectionDesc })
+
+    HomeTab:Paragraph({
+        Title = T.changelogTitlePrefix .. CHANGELOG.Version,
+        Desc = table.concat(CHANGELOG.Notes, "\n"),
     })
 
     HomeTab:Button({
@@ -489,6 +538,47 @@ function Core.Settings(Window, WindUI)
             RVXHub_Cleanup()
         end,
     })
+end
+
+-- ===== แท็บ Scripts (โหลดจากไฟล์แยก RVXHub_Scripts.lua) =====
+-- แยกไฟล์ออกมาเพื่อให้แก้/เพิ่มรายการสคริปต์ได้โดยไม่ต้องยุ่งกับ Core หลัก
+-- โหลดผ่าน HttpGet + loadstring เหมือนกับที่ไฟล์นี้โหลด WindUI ตอนต้น
+-- ครอบ pcall ไว้ทั้งขั้นตอนโหลดไฟล์และตอนเรียก Init เพื่อไม่ให้ error ตรงนี้
+-- ทำให้แท็บอื่นๆ ที่สร้างไปแล้ว (Home/Settings) หายไปด้วย
+function Core.Scripts(Window, WindUI)
+    local T = LANG[Core.Config.Language] or LANG.TH
+
+    local loadOk, ScriptsModuleOrErr = pcall(function()
+        local chunk = game:HttpGet(SCRIPTS_MODULE_URL)
+        local fn, err = loadstring(chunk)
+        if not fn then
+            error(err or "loadstring failed")
+        end
+        return fn()
+    end)
+
+    if not loadOk or type(ScriptsModuleOrErr) ~= "table" or type(ScriptsModuleOrErr.Init) ~= "function" then
+        warn("[RVX Hub] Failed to load Scripts module: " .. tostring(ScriptsModuleOrErr))
+        WindUI:Notify({
+            Title = T.scriptsLoadFailTitle,
+            Content = T.scriptsLoadFailDesc,
+            Duration = 5,
+        })
+        return
+    end
+
+    local initOk, initErr = pcall(function()
+        ScriptsModuleOrErr.Init(Window, WindUI, T)
+    end)
+
+    if not initOk then
+        warn("[RVX Hub] Scripts module Init error: " .. tostring(initErr))
+        WindUI:Notify({
+            Title = T.scriptsLoadFailTitle,
+            Content = tostring(initErr),
+            Duration = 5,
+        })
+    end
 end
 
 return Core
