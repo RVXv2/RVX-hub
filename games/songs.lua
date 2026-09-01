@@ -2,7 +2,7 @@ local Core = {}
 
 local API_BASE = "http://de3.bot-hosting.net:20209"
 local API_KEY  = "sgid_31b8690121b792dc6274b58b2df2dcc50ba656af"
-local MAX_DISPLAY = 60
+local MAX_DISPLAY = 1000
 
 function Core.AddSongsTab(Window, WindUI, enablePlayback)
     local SongsTab = Window:Tab({ Title = "เพลง", Icon = "music" })
