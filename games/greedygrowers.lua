@@ -11,7 +11,7 @@
     ใน repo ของคุณเอง (ตอนนี้ใส่เป็นตัวอย่าง path ตามที่เห็นใน GitHub ของคุณ)
 --]]
 
-local CORE_URL = "https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/Core.lua"
+local CORE_URL = "https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/core.lua"
 
 local Core = loadstring(game:HttpGet(CORE_URL))()
 local Window, WindUI = Core.Init("Greedy Growers")
