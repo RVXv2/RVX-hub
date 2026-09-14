@@ -1,5 +1,5 @@
 --[[
-    RVX-hub: Greedy Growers Module (ฉบับแก้ไข: สแกนเฉพาะผลไม้บนต้น + วาปลอยกลางอากาศเก็บทีละลูก)
+    RVX-hub: Greedy Growers Module (ฉบับเพิ่มระบบ Check Strict Filter กรองป้าย Robux / UI เด้ง 100%)
 --]]
 
 local GreedyGrowers = {}
@@ -149,7 +149,7 @@ function GreedyGrowers.Init(Window, WindUI)
         return candidates
     end
 
-    -- ===== สแกนพล็อตของเรา =====
+    -- ===== สแกนหา พล็อตของเรา =====
     local function getPlayerPlotsFolder()
         local bigField = workspace:FindFirstChild("BigField")
         return bigField and bigField:FindFirstChild("PlayerPlots")
@@ -184,42 +184,54 @@ function GreedyGrowers.Init(Window, WindUI)
         return nil
     end
 
-    -- ===== [ปรับปรุงใหม่] ระบบสแกนเฉพาะผลไม้บนต้นไม้ เจาะจง ProximityPrompt ที่เป็นผลไม้แท้เท่านั้น =====
+    -- ===== [ระบบเช็ก Strict Filter] ตรวจสอบว่าเป็นผลไม้จริงเท่านั้น =====
+    local function isTargetRealFruit(prompt, parentPart)
+        if not prompt or not parentPart then return false end
+        
+        -- 1. กรองจากชื่อ Object และ Ancestor
+        local partName = parentPart.Name
+        local parentOfPart = parentPart.Parent
+        local grandParentName = parentOfPart and parentOfPart.Name or ""
+
+        -- ป้องกันโครงสร้างของป้าย Robux หรือป้าย Customize
+        if partName == "PromptPart" or partName:find("Customize") or partName:find("Robux") then
+            return false
+        end
+        if grandParentName:find("Bench") or grandParentName:find("Crafting") then
+            return false
+        end
+
+        -- 2. กรองจากข้อความ ProximityPrompt
+        local actionText = tostring(prompt.ActionText):lower()
+        local objectText = tostring(prompt.ObjectText):lower()
+
+        if actionText:find("customize") or actionText:find("ปรับแต่ง") 
+           or actionText:find("buy") or actionText:find("ซื้อ") 
+           or objectText:find("robux") or objectText:find("ทั้งหมด") then
+            return false
+        end
+
+        -- 3. ตรวจสอบ Attribute หรือโครงสร้างของผลไม้จริง
+        local hasFruitAttribute = parentPart:GetAttribute("Fruit") ~= nil or parentPart:GetAttribute("FruitType") ~= nil
+        local isInsideSpawnsFolder = (partName == "FruitSpawn" and grandParentName == "FruitSpawns")
+        local isTreeBasePrompt = partName:find("TreeBasePrompt_") ~= nil
+
+        return isFruitAttribute or isInsideSpawnsFolder or isTreeBasePrompt
+    end
+
     local function scanOnlyRealFruits()
         local plotFolder = getMyPlotFolder()
         if not plotFolder then return {} end
 
         local fruitList = {}
-        
-        -- ไล่เช็กทุก ProximityPrompt ในพล็อตของเรา
         for _, desc in ipairs(plotFolder:GetDescendants()) do
             if desc:IsA("ProximityPrompt") and desc.Enabled then
                 local parentPart = desc.Parent
-                local actionText = tostring(desc.ActionText):lower()
-                local objectText = tostring(desc.ObjectText):lower()
-                local parentName = parentPart and parentPart.Name or ""
-
-                -- บล็อกคำสำคัญของป้าย Robux / แต่งสวน / ซื้อของ / คราฟต์
-                local isForbidden = actionText:find("customize") or actionText:find("ปรับแต่ง")
-                    or actionText:find("buy") or actionText:find("ซื้อ")
-                    or objectText:find("robux") or objectText:find("ทั้งหมด")
-                    or parentName:find("Crafting") or parentName:find("Bench")
-                    or parentName:find("CollectAll") or parentName:find("Sign")
-
-                -- เงื่อนไข: ต้องไม่ใช่ป้ายต้องห้าม และ parent ต้องมีชื่อเกี่ยวกับ Fruit หรือกดเก็บได้
-                if not isForbidden then
-                    -- เช็กว่าป้ายอยู่บนต้นไม้ หรือ อยู่ตรงส่วนที่เป็น Fruit
-                    local isFruitPart = parentName == "FruitSpawn" 
-                        or parentName:find("Fruit") 
-                        or parentName:find("Harvest")
-                        or (desc.ObjectText and desc.ObjectText ~= "")
-
-                    if isFruitPart then
-                        table.insert(fruitList, {
-                            part = parentPart,
-                            prompt = desc
-                        })
-                    end
+                if isTargetRealFruit(desc, parentPart) then
+                    table.insert(fruitList, {
+                        part = parentPart,
+                        prompt = desc
+                    })
                 end
             end
         end
@@ -280,7 +292,7 @@ function GreedyGrowers.Init(Window, WindUI)
         end,
     })
 
-    GrowersTab:Section({ Title = "เก็บผลไม้อัตโนมัติ", Desc = "วาปเจาะจงลอยไปกดเก็บทีละลูกบนต้นไม้" })
+    GrowersTab:Section({ Title = "เก็บผลไม้อัตโนมัติ", Desc = "ระบบตรวจสอบผลไม้สุกแท้ วาปเก็บทีละผล" })
 
     GrowersTab:Toggle({
         Title = "เก็บผลไม้อัตโนมัติ",
@@ -369,7 +381,7 @@ function GreedyGrowers.Init(Window, WindUI)
     end)
 
     -- ===========================================================
-    -- ===== ลูป Auto Collect Fruit (วาปตรงเข้าหาผลไม้บนต้นทีละลูก) =====
+    -- ===== ลูป Auto Collect Fruit (ใช้ฟังก์ชัน Check ละเอียด) =====
     -- ===========================================================
     task.spawn(function()
         while true do
@@ -389,14 +401,14 @@ function GreedyGrowers.Init(Window, WindUI)
                             local prompt = item.prompt
                             local part = item.part
 
-                            if prompt and prompt.Enabled and part and part.Parent then
+                            -- เช็กซ้ำอีกรอบก่อนวาปเข้าเก็บ
+                            if prompt and prompt.Enabled and part and part.Parent and isTargetRealFruit(prompt, part) then
                                 setStatus("กำลังเก็บผลไม้ลูกที่ (" .. i .. "/" .. #fruitItems .. ")")
 
-                                -- วาปไปจ่อลอยอยู่เหนือผลไม้นั้น 1.5 บล็อก
+                                -- วาปไปจ่อเหนือพาร์ทผลไม้
                                 root.CFrame = part.CFrame + Vector3.new(0, 1.5, 0)
                                 task.wait(0.1)
 
-                                -- กดปุ่มเก็บ
                                 pcall(function()
                                     fireProximityPrompt(prompt)
                                 end)
@@ -404,7 +416,6 @@ function GreedyGrowers.Init(Window, WindUI)
                             end
                         end
 
-                        -- พากลับมายืนจุดเดิมก่อนหน้า
                         if root and root.Parent then
                             root.CFrame = initialPos
                         end
