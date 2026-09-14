@@ -479,30 +479,23 @@ function GreedyGrowers.Init(Window, WindUI)
                         lastFruitLogKey = nil -- รีเซ็ต กันพลาดตอนมีผลไม้ใหม่
 
                         local target = fruits[1]
-                        local inRange = isWithinRange(target.object, target.prompt)
-                        local teleportBackFn = nil
 
-                        if not inRange then
-                            if _G.AutoTeleportCollect then
-                                local moved, backFn = teleportNearTarget(target.object, target.prompt)
-                                if moved then
-                                    teleportBackFn = backFn
-                                    setStatus("วาปไปเก็บผลไม้: " .. tostring(target.plotName))
-                                    task.wait(TELEPORT_SETTLE_WAIT)
-                                    inRange = true
-                                end
-                            else
-                                setStatus("พบผลไม้แต่ไกลเกิน: " .. tostring(target.plotName))
+                        -- วาปไปยืนตรงหน้าผลไม้ทุกครั้ง (หันหน้าเข้าเก็บเป๊ะๆ กันปัญหาหันผิดทาง)
+                        local teleportBackFn = nil
+                        if _G.AutoTeleportCollect then
+                            local moved, backFn = teleportNearTarget(target.object, target.prompt)
+                            if moved then
+                                teleportBackFn = backFn
+                                setStatus("วาปไปเก็บผลไม้: " .. tostring(target.plotName))
+                                task.wait(TELEPORT_SETTLE_WAIT)
                             end
                         end
 
-                        if inRange then
-                            setStatus("กำลังเก็บผลไม้: " .. tostring(target.plotName) .. " (เหลืออีก " .. #fruits .. " ลูก)")
-                            pcall(function()
-                                fireProximityPrompt(target.prompt)
-                            end)
-                            task.wait(VERIFY_WAIT)
-                        end
+                        setStatus("กำลังเก็บผลไม้: " .. tostring(target.plotName) .. " (เหลืออีก " .. #fruits .. " ลูก)")
+                        pcall(function()
+                            fireProximityPrompt(target.prompt)
+                        end)
+                        task.wait(VERIFY_WAIT)
 
                         if teleportBackFn then
                             task.wait(TELEPORT_RETURN_WAIT)
