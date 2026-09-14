@@ -207,6 +207,47 @@ function GreedyGrowers.Init(Window, WindUI)
         return false -- ไม่มี Attribute เจ้าของเลย และไม่ใช่ Model พล็อตที่รู้จัก ถือว่าไม่ใช่ของเรา (ปลอดภัยไว้ก่อน)
     end
 
+    local function findMyPlotFolder(plots)
+        for _, plotFolder in ipairs(plots:GetChildren()) do
+            if isOwnedByLocalPlayer(plotFolder) then
+                return plotFolder
+            end
+        end
+        return nil
+    end
+
+    -- คำนวณตำแหน่ง "กลางสวน" ของพล็อตเรา จากค่าเฉลี่ยตำแหน่งจุดปลูกผลไม้ (FruitSpawn) ทั้งหมด
+    -- ถ้าพล็อตยังไม่มีต้นไม้เลย (ไม่เจอ FruitSpawn) จะ fallback ไปใช้ค่าเฉลี่ยของ BasePart ทั้งหมดในพล็อตแทน
+    local function computePlotCenterCFrame(plotFolder)
+        local positions = {}
+
+        for _, desc in ipairs(plotFolder:GetDescendants()) do
+            if desc:IsA("BasePart") and desc.Name == "FruitSpawn" then
+                table.insert(positions, desc.Position)
+            end
+        end
+
+        if #positions == 0 then
+            for _, desc in ipairs(plotFolder:GetDescendants()) do
+                if desc:IsA("BasePart") then
+                    table.insert(positions, desc.Position)
+                end
+            end
+        end
+
+        if #positions == 0 then return nil end
+
+        local sum = Vector3.new(0, 0, 0)
+        for _, pos in ipairs(positions) do
+            sum = sum + pos
+        end
+        local center = sum / #positions
+
+        -- ยกสูงจากจุดกึ่งกลางเล็กน้อยกันวาปติดพื้น/ทะลุของ แล้วหันหน้าเข้าหาจุดกึ่งกลางพล็อต
+        local standPos = Vector3.new(center.X, center.Y + 5, center.Z)
+        return CFrame.new(standPos, center)
+    end
+
     local function scanAllFruitPrompts()
         local plots = getPlayerPlotsFolder()
         if not plots then return {} end
@@ -336,14 +377,23 @@ function GreedyGrowers.Init(Window, WindUI)
         end,
     })
 
-    GrowersTab:Section({ Title = "เก็บผลไม้อัตโนมัติ", Desc = "เก็บผลไม้สุกทุกต้นในพล็อตของเรา" })
+    GrowersTab:Section({ Title = "เก็บผลไม้อัตโนมัติ", Desc = "วาปไปกลางสวนก่อนครั้งเดียว แล้วเก็บผลไม้สุกทุกต้นในพล็อตของเราทีละลูก" })
+
+    -- ตัวแปรนี้คุมว่า "วาปไปกลางสวนแล้วหรือยัง" ในรอบการเปิดใช้งานนี้
+    -- toggle callback ด้านล่างจะรีเซ็ตเป็น false ทุกครั้งที่เปิดใหม่ เพื่อวาปไปกลางสวนซ้ำ
+    -- (เผื่อผู้เล่นเดินไปที่อื่นระหว่างที่ปิดฟีเจอร์ไว้)
+    local movedToGardenCenter = false
 
     GrowersTab:Toggle({
         Title = "เก็บผลไม้อัตโนมัติ",
         Value = _G.AutoCollectFruit,
         Callback = function(state)
             _G.AutoCollectFruit = state
-            if not state then setStatus("ปิดอยู่") end
+            if state then
+                movedToGardenCenter = false
+            else
+                setStatus("ปิดอยู่")
+            end
         end,
     })
 
@@ -467,6 +517,32 @@ function GreedyGrowers.Init(Window, WindUI)
                         lastFruitLogKey = "NO_PLOTS_FOLDER"
                     end
                 else
+                    -- ===== ขั้นแรก: วาปไปกลางสวนของเราก่อนครั้งเดียว =====
+                    -- ทำแค่ครั้งแรกหลังเปิดใช้งาน (หรือหลังปิดแล้วเปิดใหม่) กันปัญหาวาป
+                    -- ระยะไกลข้ามแมพไปกลับทุกรอบตอนเก็บทีละลูก ซึ่งดูไม่นิ่งและอาจมีปัญหา
+                    if not movedToGardenCenter then
+                        local myPlot = findMyPlotFolder(plots)
+                        if myPlot then
+                            local centerCFrame = computePlotCenterCFrame(myPlot)
+                            local character = LocalPlayer.Character
+                            local root = character and character:FindFirstChild("HumanoidRootPart")
+
+                            if centerCFrame and root then
+                                local ok = pcall(function()
+                                    root.CFrame = centerCFrame
+                                end)
+                                if ok then
+                                    setStatus("วาปไปกลางสวนแล้ว กำลังเริ่มเก็บผลไม้...")
+                                    task.wait(TELEPORT_SETTLE_WAIT)
+                                end
+                                movedToGardenCenter = true
+                            end
+                            -- ถ้า root ยังไม่พร้อม (character กำลังโหลด) ปล่อยให้ลองใหม่รอบถัดไป
+                        else
+                            -- ยังหาพล็อตของเราไม่เจอ (อาจยังโหลดไม่เสร็จ) รอรอบถัดไปแล้วลองใหม่
+                        end
+                    end
+
                     local fruits = scanAllFruitPrompts()
                     local logKey = "COUNT_" .. tostring(#fruits)
 
@@ -481,6 +557,8 @@ function GreedyGrowers.Init(Window, WindUI)
                         local target = fruits[1]
 
                         -- วาปไปยืนตรงหน้าผลไม้ทุกครั้ง (หันหน้าเข้าเก็บเป๊ะๆ กันปัญหาหันผิดทาง)
+                        -- เนื่องจากวาปไปกลางสวนไว้แล้วด้านบน จุด "กลับที่เดิม" ของแต่ละลูก
+                        -- จะเป็นตำแหน่งใกล้ๆ กลางสวนเสมอ ไม่ใช่ตำแหน่งไกลๆ ก่อนเปิดฟีเจอร์อีกต่อไป
                         local teleportBackFn = nil
                         if _G.AutoTeleportCollect then
                             local moved, backFn = teleportNearTarget(target.object, target.prompt)
@@ -504,6 +582,7 @@ function GreedyGrowers.Init(Window, WindUI)
                     end
                 end
             else
+                movedToGardenCenter = false -- ปิดฟีเจอร์ไว้ เปิดใหม่ครั้งหน้าจะวาปไปกลางสวนซ้ำอีกที
                 setStatus("ปิดอยู่")
             end
 
