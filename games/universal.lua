@@ -7,6 +7,38 @@ local mapName = (ok and info and info.Name) or "Universal"
 
 local Window, WindUI = Core.Init(mapName)
 
+-- ===== โมดูลเสริมเฉพาะแมพ (โหลดเพิ่มเฉพาะตอน PlaceId ตรงกับที่กำหนดไว้เท่านั้น) =====
+-- เพิ่มแมพใหม่ได้โดยเพิ่มบรรทัดในตาราง MAP_MODULES ด้านล่าง: [PlaceId] = "raw URL ของไฟล์"
+-- โมดูลปลายทางต้อง return table ที่มีฟังก์ชัน Init(Window, WindUI) เท่านั้น (ดูตัวอย่างใน greedygrowers.lua)
+local MAP_MODULES = {
+    [74102906764176] = "https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/greedygrowers.lua", -- Greedy Growers
+}
+
+do
+    local moduleUrl = MAP_MODULES[game.PlaceId]
+    if moduleUrl then
+        local loadOk, ModuleOrErr = pcall(function()
+            local chunk = game:HttpGet(moduleUrl)
+            local fn, err = loadstring(chunk)
+            if not fn then
+                error(err or "loadstring failed")
+            end
+            return fn()
+        end)
+
+        if loadOk and type(ModuleOrErr) == "table" and type(ModuleOrErr.Init) == "function" then
+            local initOk, initErr = pcall(function()
+                ModuleOrErr.Init(Window, WindUI)
+            end)
+            if not initOk then
+                warn("[RVX Hub] Map module Init error: " .. tostring(initErr))
+            end
+        else
+            warn("[RVX Hub] Failed to load map module: " .. tostring(ModuleOrErr))
+        end
+    end
+end
+
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
