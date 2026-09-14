@@ -138,7 +138,7 @@ TeleportTab:Button({
 })
 
 -- ===== แท็บการป้องกัน =====
-local ProtectionTab = Window:Tab({ Title = "การป้องกัน", Icon = "shield" })
+local MixTab = Window:Tab({ Title = "มิก", Icon = "layers" })
 
 -- บันทึก/โหลดค่า toggle ทั้งหมดลงไฟล์แยก เพื่อให้จำค่าได้แม้ออกเข้าเกมใหม่
 -- (รันสคริปต์ใหม่) ไม่ต้องมาติ๊กเปิดใหม่ทุกครั้ง
@@ -266,9 +266,9 @@ game:GetService("RunService").Heartbeat:Connect(function()
     end
 end)
 
-ProtectionTab:Section({ Title = "การนั่ง", Desc = "ป้องกันไม่ให้ตัวละครนั่งได้" })
+MixTab:Section({ Title = "การนั่ง", Desc = "ป้องกันไม่ให้ตัวละครนั่งได้" })
 
-ProtectionTab:Toggle({
+MixTab:Toggle({
     Title = "กันนั่งทุกอย่าง",
     Desc = "บล็อกทุกจุดพร้อมกัน (เก้าอี้ + รถ + อื่นๆ)",
     Value = AntiSitAll,
@@ -280,7 +280,7 @@ ProtectionTab:Toggle({
     end,
 })
 
-ProtectionTab:Toggle({
+MixTab:Toggle({
     Title = "กันนั่งเก้าอี้",
     Desc = "เฉพาะที่นั่งทั่วไป ไม่รวมรถ",
     Value = AntiSitChair,
@@ -291,7 +291,7 @@ ProtectionTab:Toggle({
     end,
 })
 
-ProtectionTab:Toggle({
+MixTab:Toggle({
     Title = "กันนั่งรถ",
     Desc = "เฉพาะเบาะรถ ไม่รวมเก้าอี้",
     Value = AntiSitVehicle,
@@ -302,9 +302,9 @@ ProtectionTab:Toggle({
     end,
 })
 
-ProtectionTab:Section({ Title = "แรงกระแทก", Desc = "ป้องกันการถูกเหวี่ยง/ล้ม (ทั้งสถานะและแรงจริง)" })
+MixTab:Section({ Title = "แรงกระแทก", Desc = "ป้องกันการถูกเหวี่ยง/ล้ม (ทั้งสถานะและแรงจริง)" })
 
-ProtectionTab:Toggle({
+MixTab:Toggle({
     Title = "กันโดนดีด",
     Desc = "ป้องกันการถูกดีดจากของในแมพ (หักล้างแรงกระแทกจริง ไม่ใช่แค่บล็อกสถานะ)",
     Value = AntiKnockback,
@@ -316,7 +316,7 @@ ProtectionTab:Toggle({
     end,
 })
 
-ProtectionTab:Toggle({
+MixTab:Toggle({
     Title = "กันล้ม",
     Desc = "ป้องกัน Ragdoll",
     Value = AntiRagdoll,
@@ -328,12 +328,10 @@ ProtectionTab:Toggle({
     end,
 })
 
--- ===== แท็บการเคลื่อนไหว =====
+-- ===== ส่วนการเคลื่อนไหว (รวมอยู่ในแท็บ มิก) =====
 local RunService = game:GetService("RunService")
 
-local MovementTab = Window:Tab({ Title = "การเคลื่อนไหว", Icon = "move" })
-
-MovementTab:Section({ Title = "บิน", Desc = "เปิดโหมดบินอิสระ รองรับมือถือ ความสูงคุมด้วยมุมกล้องเสมอ" })
+MixTab:Section({ Title = "บิน", Desc = "เปิดโหมดบินอิสระ รองรับมือถือ ความสูงคุมด้วยมุมกล้องเสมอ" })
 
 local FlyEnabled = false
 local FlySpeed = 50
@@ -411,7 +409,7 @@ local function StopFly()
     end
 end
 
-MovementTab:Toggle({
+MixTab:Toggle({
     Title = "เปิดโหมดบิน",
     Desc = "โยกจอยไปทางไหนก็บินไปทางนั้น มองไปทางไหนก็บินไปทางนั้นแบบธรรมชาติ (ยืนนิ่งจะลอยอยู่กับที่ ไม่ขยับเองแม้แหงนกล้อง)",
     Value = false,
@@ -427,7 +425,7 @@ MovementTab:Toggle({
     end,
 })
 
-MovementTab:Slider({
+MixTab:Slider({
     Title = "ความเร็วบิน",
     Desc = "ปรับความเร็วขณะบิน (หรือใส่ตัวเลขเองด้านล่างถ้าต้องการค่ามากกว่านี้)",
     Value = { Min = 10, Max = 1000, Default = 50 },
@@ -439,7 +437,7 @@ MovementTab:Slider({
 -- ช่องกรอกตัวเลขความเร็วบินเอง ไว้ตั้งค่านอกช่วงของสไลเดอร์ (เช่น 5000+)
 -- ครอบ pcall ไว้เผื่อ WindUI บางเวอร์ชันใช้ syntax ของ Input ต่างไปเล็กน้อย
 pcall(function()
-    MovementTab:Input({
+    MixTab:Input({
         Title = "กำหนดความเร็วบินเอง",
         Desc = "ใส่ตัวเลขตรงๆ ถ้าต้องการค่ามากกว่าสไลเดอร์ด้านบน",
         Value = "50",
@@ -465,7 +463,7 @@ LocalPlayer.CharacterAdded:Connect(function()
 end)
 
 -- ===== หมุนตัวละคร (ใช้แรงหมุนจริง คนอื่นเห็นลื่น ไม่กระตุก) =====
-MovementTab:Section({ Title = "หมุนตัวละคร", Desc = "หมุนตัวเองอัตโนมัติต่อเนื่อง คนอื่นเห็นหมุนจริงลื่นๆ" })
+MixTab:Section({ Title = "หมุนตัวละคร", Desc = "หมุนตัวเองอัตโนมัติต่อเนื่อง คนอื่นเห็นหมุนจริงลื่นๆ" })
 
 local SpinEnabled = false
 local SpinSpeed = 180
@@ -494,7 +492,7 @@ local function StopSpin()
     end
 end
 
-MovementTab:Toggle({
+MixTab:Toggle({
     Title = "เปิดหมุนตัวละคร",
     Desc = "ตัวละครจะหมุนรอบตัวเองต่อเนื่องอัตโนมัติ ใช้แรงหมุนจริงทำให้คนอื่นเห็นตรงกัน",
     Value = false,
@@ -510,7 +508,7 @@ MovementTab:Toggle({
     end,
 })
 
-MovementTab:Slider({
+MixTab:Slider({
     Title = "ความเร็วหมุน",
     Desc = "หน่วยองศาต่อวินาที (ค่าสูงมากๆ อาจดูสั่น/ไม่ลื่นเพราะข้อจำกัดฟิสิกส์ของเกม ลองปรับดูจุดที่ลื่นสุด)",
     Value = { Min = 30, Max = 10000, Default = 180 },
@@ -529,7 +527,7 @@ LocalPlayer.CharacterAdded:Connect(function()
     end
 end)
 
-MovementTab:Section({ Title = "ทะลุทุกอย่าง", Desc = "เดิน/บินทะลุกำแพงและวัตถุทุกชนิดในแมพได้" })
+MixTab:Section({ Title = "ทะลุทุกอย่าง", Desc = "เดิน/บินทะลุกำแพงและวัตถุทุกชนิดในแมพได้" })
 
 local NoclipEnabled = false
 local NoclipConnection = nil
@@ -544,7 +542,7 @@ local function SetCollide(state)
     end
 end
 
-MovementTab:Toggle({
+MixTab:Toggle({
     Title = "ทะลุทุกอย่าง (Noclip)",
     Desc = "ปิดการชนกับทุกวัตถุในแมพ เดิน/บินทะลุกำแพงได้",
     Value = false,
@@ -577,7 +575,7 @@ LocalPlayer.CharacterAdded:Connect(function()
     end
 end)
 
-MovementTab:Section({ Title = "ล็อคตำแหน่ง", Desc = "ค้างตัวละครอยู่กับที่ แต่ยังเปลี่ยนท่าทาง/เล่นแอนิเมชันได้" })
+MixTab:Section({ Title = "ล็อคตำแหน่ง", Desc = "ค้างตัวละครอยู่กับที่ แต่ยังเปลี่ยนท่าทาง/เล่นแอนิเมชันได้" })
 
 local PositionLocked = false
 
@@ -588,7 +586,7 @@ local function ApplyPositionLock(state)
     root.Anchored = state
 end
 
-MovementTab:Toggle({
+MixTab:Toggle({
     Title = "ล็อคตำแหน่ง",
     Desc = "ตรึงตำแหน่งปัจจุบันไว้ ขยับที่ไม่ได้แต่ยังโพสท่า/เล่นแอนิเมชันได้",
     Value = false,
@@ -605,7 +603,7 @@ LocalPlayer.CharacterAdded:Connect(function()
 end)
 
 -- ===== ความเร็ววิ่ง / กระโดด (ล็อคค่าไว้ตลอด ไม่ถูกรีเซ็ต) =====
-MovementTab:Section({ Title = "ความเร็ววิ่ง", Desc = "ปรับ WalkSpeed และล็อคค่าไว้ตลอด แม้ถูกรีเซ็ตหรือตายก็คงเดิม" })
+MixTab:Section({ Title = "ความเร็ววิ่ง", Desc = "ปรับ WalkSpeed และล็อคค่าไว้ตลอด แม้ถูกรีเซ็ตหรือตายก็คงเดิม" })
 
 local WalkSpeedValue = 16
 local WalkSpeedLocked = false
@@ -617,7 +615,7 @@ local function ApplyWalkSpeed()
     end
 end
 
-MovementTab:Slider({
+MixTab:Slider({
     Title = "ความเร็ววิ่ง",
     Desc = "ค่าเริ่มต้นของเกมคือ 16 (ล็อคไว้ตลอดอัตโนมัติเมื่อปรับ)",
     Value = { Min = 16, Max = 200, Default = 16 },
@@ -628,7 +626,7 @@ MovementTab:Slider({
     end,
 })
 
-MovementTab:Section({ Title = "ความสูงกระโดด", Desc = "ปรับ JumpPower และล็อคค่าไว้ตลอด แม้ถูกรีเซ็ตหรือตายก็คงเดิม" })
+MixTab:Section({ Title = "ความสูงกระโดด", Desc = "ปรับ JumpPower และล็อคค่าไว้ตลอด แม้ถูกรีเซ็ตหรือตายก็คงเดิม" })
 
 local JumpPowerValue = 50
 local JumpPowerLocked = false
@@ -641,7 +639,7 @@ local function ApplyJumpPower()
     end
 end
 
-MovementTab:Slider({
+MixTab:Slider({
     Title = "ความสูงกระโดด",
     Desc = "ค่าเริ่มต้นของเกมคือ 50 (ล็อคไว้ตลอดอัตโนมัติเมื่อปรับ)",
     Value = { Min = 50, Max = 300, Default = 50 },
@@ -677,14 +675,13 @@ if LocalPlayer.Character then
     if JumpPowerLocked then ApplyJumpPower() end
 end
 
--- ===== แท็บ Anti Lag =====
-local PerformanceTab = Window:Tab({ Title = "ประสิทธิภาพ", Icon = "gauge" })
+-- ===== ส่วน Anti Lag (รวมอยู่ในแท็บ มิก) =====
 
-PerformanceTab:Section({ Title = "ลดแลค", Desc = "ลบสิ่งของที่ไม่จำเป็นเพื่อเพิ่ม FPS" })
+MixTab:Section({ Title = "ลดแลค", Desc = "ลบสิ่งของที่ไม่จำเป็นเพื่อเพิ่ม FPS" })
 
 local RemovedItems = {}
 
-PerformanceTab:Button({
+MixTab:Button({
     Title = "ลบต้นไม้/พุ่มไม้",
     Icon = "trash-2",
     Callback = function()
@@ -704,7 +701,7 @@ PerformanceTab:Button({
     end,
 })
 
-PerformanceTab:Button({
+MixTab:Button({
     Title = "ปิดเงา (Shadows)",
     Icon = "sun",
     Callback = function()
@@ -714,7 +711,7 @@ PerformanceTab:Button({
     end,
 })
 
-PerformanceTab:Button({
+MixTab:Button({
     Title = "ลดระยะมองเห็น (Fog/Distance)",
     Icon = "eye-off",
     Callback = function()
@@ -725,7 +722,7 @@ PerformanceTab:Button({
     end,
 })
 
-PerformanceTab:Button({
+MixTab:Button({
     Title = "คืนค่าทั้งหมด",
     Icon = "rotate-ccw",
     Callback = function()
@@ -742,9 +739,6 @@ PerformanceTab:Button({
         WindUI:Notify({ Title = "Anti Lag", Content = "คืนค่าทุกอย่างแล้ว", Duration = 3 })
     end,
 })
-
--- ===== แท็บสคริปต์ =====
-Core.Scripts(Window, WindUI)
 
 -- ===== ตั้งค่า (ต้องอยู่ล่างสุดเสมอ) =====
 Core.Settings(Window, WindUI)
