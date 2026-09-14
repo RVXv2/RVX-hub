@@ -1,5 +1,5 @@
 --[[
-    RVX-hub: Greedy Growers Module (โมดูลเสริมเฉพาะแมพ) - Fixed Auto Collect
+    RVX-hub: Greedy Growers Module (โมดูลเสริมเฉพาะแมพ) - Fixed Fast Auto Collect
 --]]
 
 local GreedyGrowers = {}
@@ -191,35 +191,6 @@ function GreedyGrowers.Init(Window, WindUI)
         return nil
     end
 
-    -- คำนวณจุดศูนย์กลางพล็อตอย่างแม่นยำ (แก้ไขปัญหา CFrame หันเพี้ยน)
-    local function computePlotCenterCFrame(plotFolder)
-        local positions = {}
-
-        for _, desc in ipairs(plotFolder:GetDescendants()) do
-            if desc:IsA("BasePart") and desc.Name == "FruitSpawn" then
-                table.insert(positions, desc.Position)
-            end
-        end
-
-        if #positions == 0 then
-            for _, desc in ipairs(plotFolder:GetDescendants()) do
-                if desc:IsA("BasePart") then
-                    table.insert(positions, desc.Position)
-                end
-            end
-        end
-
-        if #positions == 0 then return nil end
-
-        local sum = Vector3.new(0, 0, 0)
-        for _, pos in ipairs(positions) do
-            sum = sum + pos
-        end
-        local center = sum / #positions
-
-        return CFrame.new(center + Vector3.new(0, 3, 0))
-    end
-
     local function scanAllFruitPrompts()
         local plots = getPlayerPlotsFolder()
         if not plots then return {} end
@@ -230,7 +201,6 @@ function GreedyGrowers.Init(Window, WindUI)
                 for _, desc in ipairs(plotFolder:GetDescendants()) do
                     if desc:IsA("ProximityPrompt") and desc.Enabled then
                         local spawnPart = desc.Parent
-                        -- ตรวจสอบว่าเป็นผลไม้บนต้นไม้จริง หรือตรวจ Prompt ที่พร้อมทำงาน
                         if spawnPart and spawnPart:IsA("BasePart") then
                             table.insert(candidates, {
                                 object = spawnPart,
@@ -245,7 +215,7 @@ function GreedyGrowers.Init(Window, WindUI)
         return candidates
     end
 
-    -- ===== วาปและระยะ (ปรับปรุงตำแหน่งวาปให้ตรงจุด ProximityPrompt) =====
+    -- ===== วาปและระยะ =====
     local function getDistanceToPart(part)
         local character = LocalPlayer.Character
         local root = character and character:FindFirstChild("HumanoidRootPart")
@@ -269,7 +239,6 @@ function GreedyGrowers.Init(Window, WindUI)
         local originalCFrame = root.CFrame
 
         local ok = pcall(function()
-            -- วาปไปตำแหน่งของ Prompt โดยตรง (ปรับระดับความสูงให้พอยืนได้ไม่ทะลุ)
             root.CFrame = CFrame.new(part.Position)
         end)
 
@@ -338,18 +307,14 @@ function GreedyGrowers.Init(Window, WindUI)
         end,
     })
 
-    GrowersTab:Section({ Title = "เก็บผลไม้อัตโนมัติ", Desc = "วาปเก็บผลไม้สุกทุกต้นในพล็อตของเรา" })
-
-    local movedToGardenCenter = false
+    GrowersTab:Section({ Title = "เก็บผลไม้อัตโนมัติ", Desc = "วาปเก็บผลไม้สุกทุกต้นในพล็อตของเราจนหมดสวน" })
 
     GrowersTab:Toggle({
         Title = "เก็บผลไม้อัตโนมัติ",
         Value = _G.AutoCollectFruit,
         Callback = function(state)
             _G.AutoCollectFruit = state
-            if state then
-                movedToGardenCenter = false
-            else
+            if not state then
                 setStatus("ปิดอยู่")
             end
         end,
@@ -357,7 +322,7 @@ function GreedyGrowers.Init(Window, WindUI)
 
     GrowersTab:Toggle({
         Title = "วาปไปเก็บถ้าไกลเกิน",
-        Desc = "วาปตัวละครไปยืนใกล้ผลไม้ชั่วคราวแล้ววาปกลับที่เดิม",
+        Desc = "วาปตัวละครไปยืนใกล้ผลไม้ชั่วคราวแล้ววาปกลับที่เดิมหลังเก็บหมด",
         Value = _G.AutoTeleportCollect,
         Callback = function(state)
             _G.AutoTeleportCollect = state
@@ -462,62 +427,52 @@ function GreedyGrowers.Init(Window, WindUI)
     end)
 
     -- ===========================================================
-    -- ===== ลูป Auto Collect Fruit =====
+    -- ===== ลูป Auto Collect Fruit (ตะลุยเก็บทั้งสวน) =====
     -- ===========================================================
     task.spawn(function()
         while true do
             if _G.AutoCollectFruit then
                 local plots = getPlayerPlotsFolder()
                 if plots then
-                    -- วาปไปจุดศูนย์กลางพล็อตเฉพาะครั้งแรกที่เปิดใช้งาน
-                    if not movedToGardenCenter then
-                        local myPlot = findMyPlotFolder(plots)
-                        if myPlot then
-                            local centerCFrame = computePlotCenterCFrame(myPlot)
-                            local character = LocalPlayer.Character
-                            local root = character and character:FindFirstChild("HumanoidRootPart")
-
-                            if centerCFrame and root then
-                                pcall(function()
-                                    root.CFrame = centerCFrame
-                                end)
-                                setStatus("วาปไปกลางสวนแล้ว กำลังเริ่มเก็บผลไม้...")
-                                task.wait(TELEPORT_SETTLE_WAIT)
-                                movedToGardenCenter = true
-                            end
-                        end
-                    end
-
                     local fruits = scanAllFruitPrompts()
 
                     if #fruits > 0 then
-                        local target = fruits[1]
-                        local teleportBackFn = nil
+                        local character = LocalPlayer.Character
+                        local root = character and character:FindFirstChild("HumanoidRootPart")
+                        local startCFrame = root and root.CFrame
 
-                        if _G.AutoTeleportCollect then
-                            local moved, backFn = teleportNearTarget(target.object, target.prompt)
-                            if moved then
-                                teleportBackFn = backFn
-                                setStatus("กำลังเก็บผลไม้ (เหลืออีก " .. #fruits .. " ลูก)")
-                                task.wait(TELEPORT_SETTLE_WAIT)
+                        for i, target in ipairs(fruits) do
+                            if not _G.AutoCollectFruit then break end
+
+                            if target.prompt and target.prompt.Enabled and target.object then
+                                setStatus("กำลังเก็บผลไม้: " .. i .. "/" .. #fruits)
+
+                                if _G.AutoTeleportCollect and root then
+                                    pcall(function()
+                                        root.CFrame = CFrame.new(target.object.Position)
+                                    end)
+                                    task.wait(0.05)
+                                end
+
+                                pcall(function()
+                                    fireProximityPrompt(target.prompt)
+                                end)
+                                task.wait(0.1)
                             end
                         end
 
-                        pcall(function()
-                            fireProximityPrompt(target.prompt)
-                        end)
-                        task.wait(VERIFY_WAIT)
-
-                        if teleportBackFn then
-                            task.wait(TELEPORT_RETURN_WAIT)
-                            teleportBackFn()
+                        if _G.AutoTeleportCollect and root and startCFrame then
+                            pcall(function()
+                                root.CFrame = startCFrame
+                            end)
                         end
+                        
+                        setStatus("เก็บผลไม้หมดสวนแล้ว รอชุดใหม่สุก...")
                     else
                         setStatus("ไม่มีผลไม้ที่พร้อมเก็บในขณะนี้")
                     end
                 end
             else
-                movedToGardenCenter = false
                 setStatus("ปิดอยู่")
             end
 
