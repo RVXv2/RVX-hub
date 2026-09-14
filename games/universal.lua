@@ -12,6 +12,7 @@ local Window, WindUI = Core.Init(mapName)
 -- โมดูลปลายทางต้อง return table ที่มีฟังก์ชัน Init(Window, WindUI) เท่านั้น (ดูตัวอย่างใน greedygrowers.lua)
 local MAP_MODULES = {
     [74102906764176] = "https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/greedygrowers.lua", -- Greedy Growers
+    [16732694052] = "https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/fisch.lua", -- Fisch
 }
 
 do
