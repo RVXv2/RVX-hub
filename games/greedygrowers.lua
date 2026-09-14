@@ -1,5 +1,5 @@
 --[[
-    RVX-hub: Greedy Growers Module (ฉบับล็อกเป้าเฉพาะ Model PlotTree 100%)
+    RVX-hub: Greedy Growers Module (ฉบับแก้ป้าย Robux ด้วย Height Filter)
 --]]
 
 local GreedyGrowers = {}
@@ -195,35 +195,34 @@ function GreedyGrowers.Init(Window, WindUI)
         end
     end
 
-    -- ===== [ระบบตรวจสอบขั้นสูง: ล็อกเฉพาะ PlotTree] =====
-    local function isStrictRealFruit(prompt)
+    -- ===== [ระบบกรองตำแหน่งความสูงและความหน่วงเพื่อข้ามป้าย Robux] =====
+    local function isRealTreeFruit(prompt)
         if not prompt or not prompt.Parent then return false end
 
-        local parent = prompt.Parent
-        local grandParent = parent.Parent
+        local part = prompt.Parent
+        local grandParent = part.Parent
 
-        -- 1. ตรวจสอบชื่อ Part และ Folder ลำดับตรง
-        if parent.Name ~= "FruitSpawn" or not grandParent or grandParent.Name ~= "FruitSpawns" then
+        -- 1. เช็กความเกี่ยวโยงของป้ายซื้อ Robux
+        if prompt.ObjectText:find("Collect All") or prompt.ActionText == "Buy" then
             return false
         end
 
-        -- 2. ตรวจสอบ Attributes บังคับของผลไม้จริง
-        if parent:GetAttribute("SpawnIndex") == nil or parent:GetAttribute("FruitStartTime") == nil then
+        -- 2. ต้องเป็น FruitSpawn ใต้ FruitSpawns
+        if part.Name ~= "FruitSpawn" or not grandParent or grandParent.Name ~= "FruitSpawns" then
             return false
         end
 
-        -- 3. ตรวจสอบว่าต้องอยู่ภายใต้ Model "PlotTree_" เท่านั้น (บล็อกป้าย Robux หรือ Object อื่นๆ 100%)
-        local current = grandParent.Parent
-        local isUnderPlotTree = false
-        while current and current ~= workspace do
-            if current:IsA("Model") and current.Name:find("PlotTree") then
-                isUnderPlotTree = true
-                break
+        -- 3. ตรวจสอบความสูง (ป้าย Robux จะตั้งอยู่ที่พื้นดินความสูงต่ำกว่า 5 Studs จากพื้นพล็อต)
+        local plotFolder = getMyPlotFolder()
+        if plotFolder and plotFolder:IsA("Model") then
+            local plotPivot = plotFolder:GetPivot()
+            local heightDifference = part.Position.Y - plotPivot.Position.Y
+            if heightDifference < 3.5 then
+                return false -- ตัดป้าย Robux ที่ตั้งบนพื้นดินออกทันที
             end
-            current = current.Parent
         end
 
-        return isUnderPlotTree
+        return true
     end
 
     local function scanOnlyRealFruits()
@@ -234,7 +233,7 @@ function GreedyGrowers.Init(Window, WindUI)
 
         for _, desc in ipairs(plotFolder:GetDescendants()) do
             if desc:IsA("ProximityPrompt") and desc.Enabled then
-                if isStrictRealFruit(desc) then
+                if isRealTreeFruit(desc) then
                     table.insert(fruitList, {
                         part = desc.Parent,
                         prompt = desc
@@ -299,7 +298,7 @@ function GreedyGrowers.Init(Window, WindUI)
         end,
     })
 
-    GrowersTab:Section({ Title = "เก็บผลไม้อัตโนมัติ", Desc = "วาปเก็บผลไม้ที่อยู่ใต้ PlotTree เท่านั้น" })
+    GrowersTab:Section({ Title = "เก็บผลไม้อัตโนมัติ", Desc = "เก็บเฉพาะผลไม้ที่อยู่สูงบนต้นไม้ (กรองป้าย Robux)" })
 
     GrowersTab:Toggle({
         Title = "เก็บผลไม้อัตโนมัติ",
@@ -414,7 +413,7 @@ function GreedyGrowers.Init(Window, WindUI)
                             local prompt = item.prompt
                             local part = item.part
 
-                            if prompt and prompt.Enabled and part and part.Parent and isStrictRealFruit(prompt) then
+                            if prompt and prompt.Enabled and part and part.Parent and isRealTreeFruit(prompt) then
                                 setStatus("กำลังเก็บผลไม้ลูกที่ (" .. i .. "/" .. #fruitItems .. ")")
 
                                 root.CFrame = part.CFrame + Vector3.new(0, 1.5, 0)
