@@ -1,5 +1,5 @@
 --[[
-    RVX-hub: Greedy Growers Module (โมดูลเสริมเฉพาะแมพ) - Fixed Fast Auto Collect
+    RVX-hub: Greedy Growers Module - Complete Fixed Version
 --]]
 
 local GreedyGrowers = {}
@@ -158,7 +158,7 @@ function GreedyGrowers.Init(Window, WindUI)
         return candidates
     end
 
-    -- ===== สแกนหาผลไม้ที่เก็บได้ทั่วสวน =====
+    -- ===== สแกนหาผลไม้ที่เก็บได้ในพล็อตของเรา =====
     local function getPlayerPlotsFolder()
         local bigField = workspace:FindFirstChild("BigField")
         return bigField and bigField:FindFirstChild("PlayerPlots")
@@ -182,15 +182,6 @@ function GreedyGrowers.Init(Window, WindUI)
         return false
     end
 
-    local function findMyPlotFolder(plots)
-        for _, plotFolder in ipairs(plots:GetChildren()) do
-            if isOwnedByLocalPlayer(plotFolder) then
-                return plotFolder
-            end
-        end
-        return nil
-    end
-
     local function scanAllFruitPrompts()
         local plots = getPlayerPlotsFolder()
         if not plots then return {} end
@@ -200,13 +191,29 @@ function GreedyGrowers.Init(Window, WindUI)
             if isOwnedByLocalPlayer(plotFolder) then
                 for _, desc in ipairs(plotFolder:GetDescendants()) do
                     if desc:IsA("ProximityPrompt") and desc.Enabled then
-                        local spawnPart = desc.Parent
-                        if spawnPart and spawnPart:IsA("BasePart") then
-                            table.insert(candidates, {
-                                object = spawnPart,
-                                prompt = desc,
-                                plotName = plotFolder.Name,
-                            })
+                        local actionText = tostring(desc.ActionText):lower()
+                        local objectText = tostring(desc.ObjectText):lower()
+                        local promptName = tostring(desc.Name):lower()
+                        
+                        -- ตรวจสอบเงื่อนไขว่าไม่ใช่ปุ่มซื้อของ Robux หรือ VIP
+                        local isRobuxOrShop = actionText:find("robux") 
+                            or objectText:find("robux")
+                            or actionText:find("buy") 
+                            or objectText:find("buy")
+                            or actionText:find("ซื้อ") 
+                            or objectText:find("ซื้อ")
+                            or promptName:find("gamepass")
+                            or promptName:find("shop")
+
+                        if not isRobuxOrShop then
+                            local spawnPart = desc.Parent
+                            if spawnPart and spawnPart:IsA("BasePart") then
+                                table.insert(candidates, {
+                                    object = spawnPart,
+                                    prompt = desc,
+                                    plotName = plotFolder.Name,
+                                })
+                            end
                         end
                     end
                 end
@@ -427,7 +434,7 @@ function GreedyGrowers.Init(Window, WindUI)
     end)
 
     -- ===========================================================
-    -- ===== ลูป Auto Collect Fruit (ตะลุยเก็บทั้งสวน) =====
+    -- ===== ลูป Auto Collect Fruit (วนเก็บต่อเนื่องทั้งสวน) =====
     -- ===========================================================
     task.spawn(function()
         while true do
@@ -457,7 +464,7 @@ function GreedyGrowers.Init(Window, WindUI)
                                 pcall(function()
                                     fireProximityPrompt(target.prompt)
                                 end)
-                                task.wait(0.1)
+                                task.wait(0.08)
                             end
                         end
 
@@ -466,7 +473,7 @@ function GreedyGrowers.Init(Window, WindUI)
                                 root.CFrame = startCFrame
                             end)
                         end
-                        
+
                         setStatus("เก็บผลไม้หมดสวนแล้ว รอชุดใหม่สุก...")
                     else
                         setStatus("ไม่มีผลไม้ที่พร้อมเก็บในขณะนี้")
