@@ -216,10 +216,17 @@ function GreedyGrowers.Init(Window, WindUI)
             if isOwnedByLocalPlayer(plotFolder) then
                 for _, desc in ipairs(plotFolder:GetDescendants()) do
                     if desc:IsA("ProximityPrompt") then
-                        local actionText = tostring(desc.ActionText or ""):lower()
-                        local looksLikeCollect = actionText:find("collect", 1, true)
-                            or actionText:find("เก็บ", 1, true)
-                        if looksLikeCollect and desc.Enabled then
+                        -- เอาเฉพาะผลไม้ที่ยังอยู่บนต้น: path ต้องเป็น .../FruitSpawns/FruitSpawn/ProximityPrompt
+                        -- ตัดพวก PlotFind (ของตกพื้น), TreeBasePrompt, Decor, Leaderboard ฯลฯ ออกทั้งหมด
+                        local spawnPart = desc.Parent -- ควรเป็น Part ชื่อ "FruitSpawn"
+                        local spawnsFolder = spawnPart and spawnPart.Parent -- ควรเป็นโฟลเดอร์ชื่อ "FruitSpawns"
+
+                        local isOnTree = spawnPart
+                            and spawnsFolder
+                            and spawnPart.Name == "FruitSpawn"
+                            and spawnsFolder.Name == "FruitSpawns"
+
+                        if isOnTree and desc.Enabled then
                             table.insert(candidates, {
                                 object = desc.Parent,
                                 prompt = desc,
