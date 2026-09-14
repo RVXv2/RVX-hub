@@ -1,5 +1,5 @@
 --[[
-    RVX-hub: Greedy Growers Module (ฉบับแก้ป้าย Robux ด้วย Height Filter)
+    RVX-hub: Greedy Growers Module (ฉบับแก้ไข Auto Buy + กรองป้าย Robux)
 --]]
 
 local GreedyGrowers = {}
@@ -32,7 +32,11 @@ function GreedyGrowers.Init(Window, WindUI)
 
     -- ===== ตั้งค่าความเสถียร =====
     local LOOP_INTERVAL = 0.15
-    local VERIFY_WAIT = 0.3
+    local VERIFY_WAIT = 0.4
+    local DISTANCE_SAFETY_MARGIN = 1.0
+    local TELEPORT_APPROACH_MARGIN = 2.0
+    local TELEPORT_SETTLE_WAIT = 0.1
+    local TELEPORT_RETURN_WAIT = 0.15
     local MIN_SELL_DELAY = 0.5
     local MAX_SELL_DELAY = 30.0
 
@@ -125,6 +129,12 @@ function GreedyGrowers.Init(Window, WindUI)
         return bigField and bigField:FindFirstChild("ConveyorSeeds")
     end
 
+    local function getTargetPromptPart(targetObj, prompt)
+        if targetObj:IsA("BasePart") then return targetObj end
+        if prompt.Parent and prompt.Parent:IsA("BasePart") then return prompt.Parent end
+        return targetObj:FindFirstChildWhichIsA("BasePart", true)
+    end
+
     local function scanAllAvailableSeeds()
         local conveyor = getConveyorFolder()
         if not conveyor then return {} end
@@ -184,25 +194,14 @@ function GreedyGrowers.Init(Window, WindUI)
         return nil
     end
 
-    -- ===== ปิด/เปิดแรงชนของตัวละคร =====
-    local function setCharacterCollision(enabled)
-        local character = LocalPlayer.Character
-        if not character then return end
-        for _, part in ipairs(character:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = enabled
-            end
-        end
-    end
-
-    -- ===== [ระบบกรองตำแหน่งความสูงและความหน่วงเพื่อข้ามป้าย Robux] =====
+    -- ===== ระบบกรองผลไม้จริงบนต้น (ตัดป้าย Robux ออก) =====
     local function isRealTreeFruit(prompt)
         if not prompt or not prompt.Parent then return false end
 
         local part = prompt.Parent
         local grandParent = part.Parent
 
-        -- 1. เช็กความเกี่ยวโยงของป้ายซื้อ Robux
+        -- 1. เช็กข้อความป้ายซื้อ Robux
         if prompt.ObjectText:find("Collect All") or prompt.ActionText == "Buy" then
             return false
         end
@@ -212,13 +211,13 @@ function GreedyGrowers.Init(Window, WindUI)
             return false
         end
 
-        -- 3. ตรวจสอบความสูง (ป้าย Robux จะตั้งอยู่ที่พื้นดินความสูงต่ำกว่า 5 Studs จากพื้นพล็อต)
+        -- 3. กรองความสูง (ป้าย Robux จะอยู่ต่ำกว่า 3.5 Studs จากระดับพื้นพล็อต)
         local plotFolder = getMyPlotFolder()
         if plotFolder and plotFolder:IsA("Model") then
             local plotPivot = plotFolder:GetPivot()
             local heightDifference = part.Position.Y - plotPivot.Position.Y
             if heightDifference < 3.5 then
-                return false -- ตัดป้าย Robux ที่ตั้งบนพื้นดินออกทันที
+                return false
             end
         end
 
@@ -229,23 +228,64 @@ function GreedyGrowers.Init(Window, WindUI)
         local plotFolder = getMyPlotFolder()
         if not plotFolder then return {} end
 
-        local fruitList = {}
-
+        local candidates = {}
         for _, desc in ipairs(plotFolder:GetDescendants()) do
             if desc:IsA("ProximityPrompt") and desc.Enabled then
                 if isRealTreeFruit(desc) then
-                    table.insert(fruitList, {
-                        part = desc.Parent,
-                        prompt = desc
+                    table.insert(candidates, {
+                        object = desc.Parent,
+                        prompt = desc,
+                        plotName = plotFolder.Name,
                     })
                 end
             end
         end
-        return fruitList
+        return candidates
+    end
+
+    -- ===== วาปและระยะทาง (จากโค้ดเดิม) =====
+    local function getDistanceToPart(part)
+        local character = LocalPlayer.Character
+        local root = character and character:FindFirstChild("HumanoidRootPart")
+        if not root or not part then return math.huge end
+        return (root.Position - part.Position).Magnitude
+    end
+
+    local function isWithinRange(targetObj, prompt)
+        local part = getTargetPromptPart(targetObj, prompt)
+        if not part then return true end
+        local maxDist = prompt.MaxActivationDistance or 5
+        return getDistanceToPart(part) <= math.max(maxDist - DISTANCE_SAFETY_MARGIN, 0)
+    end
+
+    local function teleportNearTarget(targetObj, prompt)
+        local character = LocalPlayer.Character
+        local root = character and character:FindFirstChild("HumanoidRootPart")
+        local part = getTargetPromptPart(targetObj, prompt)
+        if not root or not part then return false, nil end
+
+        local maxDist = prompt.MaxActivationDistance or 5
+        local approachDist = math.max(maxDist - TELEPORT_APPROACH_MARGIN, 1)
+        local originalCFrame = root.CFrame
+
+        local ok = pcall(function()
+            local targetPos = part.Position + Vector3.new(0, 0, approachDist)
+            root.CFrame = CFrame.new(targetPos, part.Position)
+        end)
+
+        if not ok then return false, nil end
+
+        local function teleportBack()
+            pcall(function()
+                if root and root.Parent then root.CFrame = originalCFrame end
+            end)
+        end
+
+        return true, teleportBack
     end
 
     -- ===========================================================
-    -- ===== Tab เฉพาะแมพนี้: "Greedy Growers" =====
+    -- ===== UI Tab: Greedy Growers =====
     -- ===========================================================
     local GrowersTab = Window:Tab({ Title = "Greedy Growers", Icon = "sprout" })
 
@@ -298,17 +338,23 @@ function GreedyGrowers.Init(Window, WindUI)
         end,
     })
 
-    GrowersTab:Section({ Title = "เก็บผลไม้อัตโนมัติ", Desc = "เก็บเฉพาะผลไม้ที่อยู่สูงบนต้นไม้ (กรองป้าย Robux)" })
+    GrowersTab:Section({ Title = "เก็บผลไม้อัตโนมัติ", Desc = "เก็บผลไม้สุกทุกต้นในพล็อตของเรา (กรองป้าย Robux)" })
 
     GrowersTab:Toggle({
         Title = "เก็บผลไม้อัตโนมัติ",
         Value = _G.AutoCollectFruit,
         Callback = function(state)
             _G.AutoCollectFruit = state
-            if not state then 
-                setStatus("ปิดอยู่")
-                setCharacterCollision(true)
-            end
+            if not state then setStatus("ปิดอยู่") end
+        end,
+    })
+
+    GrowersTab:Toggle({
+        Title = "วาปไปเก็บถ้าไกลเกิน",
+        Desc = "วาปตัวละครไปยืนใกล้ผลไม้ชั่วคราวแล้ววาปกลับที่เดิม",
+        Value = _G.AutoTeleportCollect,
+        Callback = function(state)
+            _G.AutoTeleportCollect = state
         end,
     })
 
@@ -347,7 +393,7 @@ function GreedyGrowers.Init(Window, WindUI)
     end)
 
     -- ===========================================================
-    -- ===== ลูป Auto Buy =====
+    -- ===== ลูป Auto Buy (ดึงระบบตรวจสอบระยะกลับมาแบบสมบูรณ์) =====
     -- ===========================================================
     task.spawn(function()
         while true do
@@ -364,21 +410,36 @@ function GreedyGrowers.Init(Window, WindUI)
 
                 if targetSeed then
                     local cash = getCurrentCash()
+
                     if cash >= targetSeed.price then
-                        local character = LocalPlayer.Character
-                        local root = character and character:FindFirstChild("HumanoidRootPart")
-                        if root and targetSeed.object then
-                            local origCFrame = root.CFrame
-                            setCharacterCollision(false)
-                            root.CFrame = targetSeed.object:GetPivot() + Vector3.new(0, 2, 0)
+                        local inRange = isWithinRange(targetSeed.object, targetSeed.prompt)
+                        local teleportBackFn = nil
+
+                        if not inRange then
+                            if _G.AutoTeleportBuy then
+                                local moved, backFn = teleportNearTarget(targetSeed.object, targetSeed.prompt)
+                                if moved then
+                                    teleportBackFn = backFn
+                                    setStatus("วาปไปซื้อ: " .. targetSeed.seedType)
+                                    task.wait(TELEPORT_SETTLE_WAIT)
+                                    inRange = true
+                                end
+                            else
+                                setStatus("พบเมล็ดที่เปิดแต่ไกลเกิน: " .. targetSeed.seedType)
+                            end
+                        end
+
+                        if inRange then
                             setStatus("กำลังซื้อ: " .. targetSeed.seedType)
-                            task.wait(0.1)
                             pcall(function()
                                 fireProximityPrompt(targetSeed.prompt)
                             end)
                             task.wait(VERIFY_WAIT)
-                            root.CFrame = origCFrame
-                            setCharacterCollision(true)
+                        end
+
+                        if teleportBackFn then
+                            task.wait(TELEPORT_RETURN_WAIT)
+                            teleportBackFn()
                         end
                     else
                         setStatus("เงินไม่พอซื้อ: " .. targetSeed.seedType)
@@ -387,58 +448,48 @@ function GreedyGrowers.Init(Window, WindUI)
                     setStatus("ไม่พบเมล็ดที่เปิดไว้")
                 end
             end
+
             task.wait(LOOP_INTERVAL)
         end
     end)
 
     -- ===========================================================
-    -- ===== ลูป Auto Collect Fruit =====
+    -- ===== ลูป Auto Collect Fruit (ปรับปรุงความปลอดภัยป้าย Robux) =====
     -- ===========================================================
     task.spawn(function()
         while true do
             if _G.AutoCollectFruit then
-                local fruitItems = scanOnlyRealFruits()
+                local fruits = scanOnlyRealFruits()
 
-                if #fruitItems > 0 then
-                    local character = LocalPlayer.Character
-                    local root = character and character:FindFirstChild("HumanoidRootPart")
+                if #fruits > 0 then
+                    local target = fruits[1]
+                    local teleportBackFn = nil
 
-                    if root then
-                        local initialPos = root.CFrame
-                        setCharacterCollision(false)
-
-                        for i, item in ipairs(fruitItems) do
-                            if not _G.AutoCollectFruit then break end
-
-                            local prompt = item.prompt
-                            local part = item.part
-
-                            if prompt and prompt.Enabled and part and part.Parent and isRealTreeFruit(prompt) then
-                                setStatus("กำลังเก็บผลไม้ลูกที่ (" .. i .. "/" .. #fruitItems .. ")")
-
-                                root.CFrame = part.CFrame + Vector3.new(0, 1.5, 0)
-                                task.wait(0.1)
-
-                                pcall(function()
-                                    fireProximityPrompt(prompt)
-                                end)
-                                task.wait(0.15)
-                            end
+                    if _G.AutoTeleportCollect then
+                        local moved, backFn = teleportNearTarget(target.object, target.prompt)
+                        if moved then
+                            teleportBackFn = backFn
+                            setStatus("วาปไปเก็บผลไม้: " .. tostring(target.plotName))
+                            task.wait(TELEPORT_SETTLE_WAIT)
                         end
+                    end
 
-                        if root and root.Parent then
-                            root.CFrame = initialPos
-                        end
-                        
-                        setCharacterCollision(true)
-                        setStatus("เก็บผลไม้รอบนี้เสร็จแล้ว")
+                    setStatus("กำลังเก็บผลไม้: " .. tostring(target.plotName) .. " (เหลืออีก " .. #fruits .. " ลูก)")
+                    pcall(function()
+                        fireProximityPrompt(target.prompt)
+                    end)
+                    task.wait(VERIFY_WAIT)
+
+                    if teleportBackFn then
+                        task.wait(TELEPORT_RETURN_WAIT)
+                        teleportBackFn()
                     end
                 else
                     setStatus("ไม่มีผลไม้สุกในพล็อต")
                 end
             end
 
-            task.wait(1.5)
+            task.wait(LOOP_INTERVAL)
         end
     end)
 
