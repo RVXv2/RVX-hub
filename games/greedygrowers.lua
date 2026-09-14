@@ -1,21 +1,29 @@
-local encodedScript = "bG9jYWwgR3JlZWR5R3Jvd2VycyA9IHt9CgpmdW5jdGlvbiBHcmVlZHlHcm93ZXJzLkluaXQo"
-.. "V2luZG93LCBXaW5kVUkpCiAgICBsb2NhbCBmaXJlUHJveGltaXR5UHJvbXB0ID0gZmlyZXBy"
-.. "b3hpbWl0eXByb21wdCBvciAoZ2V0Z2VudiBhbmQgZ2V0Z2VudigpLmZpcmVwcm94aW1pdHlw"
-.. "cm9tcHQpCiAgICBpZiBub3QgZmlyZVByb3hpbWl0eVByb21wdCB0aGVuCiAgICAgICAgd2Fy"
-.. "bigiW0dyZWVkeSBHcm93ZXJzXSBleGVjdXRvciDguZfguYjguKHguK3guLXguJbguYjguKfg"
-.. "uYsgZmlyZXByb3hpbWl0eXByb21wdCAtLSDguJjguLTguJTguJjguLXguYDguKPguLUgYXV0"
-.. "byBidXkvc2VsbCDguYLguK3guYjguKkiKQogICAgICAgIHJldHVybgogICAgZW5kCgogICAg"
-.. "bG9jYWwgUGxheWVycyA9IGdhbWU6R2V0U2VydmljZSgiUGxheWVycyIpCiAgICBsb2NhbCBS"
-.. "ZXBsaWNhdGVkU3RvcmFnZSA9IGdhbWU6R2V0U2VydmljZSgiUmVwbGljYXRlZFN0b3JhZ2Ui"
-.. "KQogICAgbG9jYWwgTG9jYWxQbGF5ZXIgPSBQbGF5ZXJzLkxvY2FsUGxheWVyCgogICAgLS0g"
-.. "PT09PT0g4EOC4Lij4LiZ4Lir4LiyIFJlbW90ZSDguKjguYfguKPguK3guK0g4LiC4Liy4Lii"
-.. "4LiC4Lit4LiHID09PT09CiAgICBsb2NhbCBzZWxsQWxsUmVtb3RlID0gbmlsCiAgICBwY2Fs"
-.. "bChmdW5jdGlvbigpCiAgICAgICAgc2VsbEFsbFJlbW90ZSA9IFJlcGxpY2F0ZWRTdG9yYWdl"
-.. "LlBhY2thZ2VzLl9JbmRleFsic2xlaXRuaWNrX2tuaXRAMC42LjAiXS5rbml0LlNlcnZpY2Vz"
-.. "LlNlbGxTdGFuZFNlcnZpY2UuUkYuU2VsbEFsbAogICAgZW5kKQoKICAgIGlmIG5vdCBzZWxs"
-.. "QWxsUmVtb3RlIHRoZW4KICAgICAgICBmb3IgXywgZGVzYyBpbiBpcGFpcnMoUmVwbGljYXRl"
-.. "ZFN0b3JhZ2U6R2V0RGVzY2VuZGFudHMoKSkgZG8KICAgICAgICAgICAgaWYgZGVzYzpJc0Eo"
-.. "IlJlbW90ZUZ1bmN0aW9u") and desc me.Name == "SellAll" then
+--[[
+    RVX-hub: Greedy Growers Module (ฉบับปรับสมดุลความเร็ว + เอาปุ่มวาร์ปออก + กันตกสวนอัตโนมัติ)
+--]]
+
+local GreedyGrowers = {}
+
+function GreedyGrowers.Init(Window, WindUI)
+    local fireProximityPrompt = fireproximityprompt or (getgenv and getgenv().fireproximityprompt)
+    if not fireProximityPrompt then
+        warn("[Greedy Growers] executor นี้ไม่มีฟังก์ชัน fireproximityprompt — ปิดฟีเจอร์ auto buy/sell ของแมพนี้")
+        return
+    end
+
+    local Players = game:GetService("Players")
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local LocalPlayer = Players.LocalPlayer
+
+    -- ===== ค้นหา Remote สำหรับขายของ =====
+    local sellAllRemote = nil
+    pcall(function()
+        sellAllRemote = ReplicatedStorage.Packages._Index["sleitnick_knit@1.6.0"].knit.Services.SellStandService.RF.SellAll
+    end)
+
+    if not sellAllRemote then
+        for _, desc in ipairs(ReplicatedStorage:GetDescendants()) do
+            if desc:IsA("RemoteFunction") and desc.Name == "SellAll" then
                 sellAllRemote = desc
                 break
             end
@@ -25,10 +33,10 @@ local encodedScript = "bG9jYWwgR3JlZWR5R3Jvd2VycyA9IHt9CgpmdW5jdGlvbiBHcmVlZHlHc
     -- ===== ตั้งค่าความเสถียรและระยะเวลาหน่วง =====
     local LOOP_INTERVAL = 0.1
     local VERIFY_WAIT = 0.15
-    local TELEPORT_SETTLE_WAIT = 0.12
-    local COLLECT_DELAY = 0.12
+    local TELEPORT_SETTLE_WAIT = 0.12 -- เพิ่มความเสถียรกันบัคตอนวาร์ป
+    local COLLECT_DELAY = 0.12        -- ระยะเวลาหน่วงตอนกดเก็บผลไม้กันติดบัค
     local TELEPORT_APPROACH_MARGIN = 2.0
-    local MAX_PLOT_RADIUS = 75
+    local MAX_PLOT_RADIUS = 75         -- รัศมีขอบเขตของสวน (หากออกห่างเกินจะวาร์ปดึงกลับ)
     local MIN_SELL_DELAY = 0.5
     local MAX_SELL_DELAY = 30.0
 
@@ -38,19 +46,41 @@ local encodedScript = "bG9jYWwgR3JlZWR5R3Jvd2VycyA9IHt9CgpmdW5jdGlvbiBHcmVlZHlHc
     _G.AutoSellInterval = 2.0
     _G.AutoCollectFruit = false
 
+    -- ===== ตารางราคาเมล็ด =====
     local SEED_PRICES = {
-        Oak = 0, Pine = 25, Apple = 200, Peach = 350, Fig = 500,
-        Orange = 10000, Lemon = 15000, Avocado = 20000, Cherry = 2500000,
-        Mango = 5000000, Coconut = 10000000, Banana = 3000000000,
-        Starfruit = 4500000000, DragonFruit = 7000000000, Glowing = 500000000000,
-        Blooming = 750000000000, Magic = 500000000000000, Pizza = 850000000000000,
-        Diamond = 1000000000000000000, Void = 1750000000000000000,
+        Oak         = 0,
+        Pine        = 25,
+        Apple       = 200,
+        Peach       = 350,
+        Fig         = 500,
+        Orange      = 10000,
+        Lemon       = 15000,
+        Avocado     = 20000,
+        Cherry      = 2500000,
+        Mango       = 5000000,
+        Coconut     = 10000000,
+        Banana      = 3000000000,
+        Starfruit   = 4500000000,
+        DragonFruit = 7000000000,
+        Glowing     = 500000000000,
+        Blooming    = 750000000000,
+        Magic       = 500000000000000,
+        Pizza       = 850000000000000,
+        Diamond     = 1000000000000000000,
+        Void        = 1750000000000000000,
     }
 
+    -- ===== รายชื่อ Rarity =====
     local RARITY_LIST = {"COMMON", "RARE", "EPIC", "LEGENDARY", "MYTHIC", "CELESTIAL", "SECRET", "DIVINE"}
     local RARITY_THAI = {
-        COMMON = "ธรรมดา", RARE = "หายาก", EPIC = "เอพิค", LEGENDARY = "ตำนาน",
-        MYTHIC = "มายา / มิติก", CELESTIAL = "สวรรค์", SECRET = "ลับ", DIVINE = "เทพ",
+        COMMON    = "ธรรมดา",
+        RARE      = "หายาก",
+        EPIC      = "เอพิค",
+        LEGENDARY = "ตำนาน",
+        MYTHIC    = "มายา / มิติก",
+        CELESTIAL = "สวรรค์",
+        SECRET    = "ลับ",
+        DIVINE    = "เทพ",
     }
 
     _G.AllowedRarities = _G.AllowedRarities or {}
@@ -60,6 +90,7 @@ local encodedScript = "bG9jYWwgR3JlZWR5R3Jvd2VycyA9IHt9CgpmdW5jdGlvbiBHcmVlZHlHc
         end
     end
 
+    -- ===== แปลงค่าเงิน =====
     local SUFFIX_MAP = {
         K = 1e3, M = 1e6, B = 1e9, T = 1e12,
         Qa = 1e15, Qi = 1e18, Sx = 1e21, Sp = 1e24,
@@ -91,6 +122,7 @@ local encodedScript = "bG9jYWwgR3JlZWR5R3Jvd2VycyA9IHt9CgpmdW5jdGlvbiBHcmVlZHlHc
         end
     end
 
+    -- ===== สแกนสายพานซื้อเมล็ด =====
     local function getConveyorFolder()
         local bigField = workspace:FindFirstChild("BigField")
         return bigField and bigField:FindFirstChild("ConveyorSeeds")
@@ -126,6 +158,7 @@ local encodedScript = "bG9jYWwgR3JlZWR5R3Jvd2VycyA9IHt9CgpmdW5jdGlvbiBHcmVlZHlHc
         return candidates
     end
 
+    -- ===== สแกนหา พล็อตของเรา =====
     local function getPlayerPlotsFolder()
         local bigField = workspace:FindFirstChild("BigField")
         return bigField and bigField:FindFirstChild("PlayerPlots")
@@ -160,6 +193,7 @@ local encodedScript = "bG9jYWwgR3JlZWR5R3Jvd2VycyA9IHt9CgpmdW5jdGlvbiBHcmVlZHlHc
         return nil
     end
 
+    -- ===== ตรวจสอบว่ายังอยู่ในขอบเขตสวนหรือไม่ =====
     local function checkAndKeepInPlot(plotFolder)
         if not plotFolder then return end
         local character = LocalPlayer.Character
@@ -169,6 +203,7 @@ local encodedScript = "bG9jYWwgR3JlZWR5R3Jvd2VycyA9IHt9CgpmdW5jdGlvbiBHcmVlZHlHc
         local plotCFrame = plotFolder:GetPivot()
         local distFromPlot = (root.Position - plotCFrame.Position).Magnitude
 
+        -- หากหลุดออกนอกขอบเขตสวน ให้ดึงกลับมาตำแหน่งกลางสวนทันที
         if distFromPlot > MAX_PLOT_RADIUS then
             pcall(function()
                 root.CFrame = plotCFrame + Vector3.new(0, 3, 0)
@@ -177,6 +212,7 @@ local encodedScript = "bG9jYWwgR3JlZWR5R3Jvd2VycyA9IHt9CgpmdW5jdGlvbiBHcmVlZHlHc
         end
     end
 
+    -- ===== ระบบกรองผลไม้จริงบนต้น =====
     local function isRealTreeFruit(prompt)
         if not prompt or not prompt.Parent then return false end
 
@@ -248,6 +284,9 @@ local encodedScript = "bG9jYWwgR3JlZWR5R3Jvd2VycyA9IHt9CgpmdW5jdGlvbiBHcmVlZHlHc
         return true, teleportBack
     end
 
+    -- ===========================================================
+    -- ===== UI Tab: Greedy Growers =====
+    -- ===========================================================
     local GrowersTab = Window:Tab({ Title = "Greedy Growers", Icon = "sprout" })
 
     local statusParagraph = GrowersTab:Paragraph({
@@ -313,6 +352,9 @@ local encodedScript = "bG9jYWwgR3JlZWR5R3Jvd2VycyA9IHt9CgpmdW5jdGlvbiBHcmVlZHlHc
         })
     end
 
+    -- ===========================================================
+    -- ===== ลูป Auto Sell =====
+    -- ===========================================================
     task.spawn(function()
         local lastSellTime = 0
         while true do
@@ -332,6 +374,9 @@ local encodedScript = "bG9jYWwgR3JlZWR5R3Jvd2VycyA9IHt9CgpmdW5jdGlvbiBHcmVlZHlHc
         end
     end)
 
+    -- ===========================================================
+    -- ===== ลูป Auto Buy =====
+    -- ===========================================================
     task.spawn(function()
         while true do
             if _G.AutoBuySeed then
@@ -375,11 +420,15 @@ local encodedScript = "bG9jYWwgR3JlZWR5R3Jvd2VycyA9IHt9CgpmdW5jdGlvbiBHcmVlZHlHc
         end
     end)
 
+    -- ===========================================================
+    -- ===== ลูป Auto Collect Fruit (ปรับไม่ให้ไวเกินจนบัค + กันหลุดสวน) =====
+    -- ===========================================================
     task.spawn(function()
         while true do
             if _G.AutoCollectFruit then
                 local myPlot = getMyPlotFolder()
                 
+                -- เช็คเสมอว่าถ้าหลุดสวนให้ดึงกลับเข้ามาที่สวนก่อน
                 if myPlot then
                     checkAndKeepInPlot(myPlot)
                 end
@@ -394,6 +443,7 @@ local encodedScript = "bG9jYWwgR3JlZWR5R3Jvd2VycyA9IHt9CgpmdW5jdGlvbiBHcmVlZHlHc
                     for i, target in ipairs(fruits) do
                         if not _G.AutoCollectFruit then break end
                         
+                        -- เช็คขอบเขตสวนระหว่างวนเก็บผลไม้
                         checkAndKeepInPlot(myPlot)
 
                         if target.prompt and target.prompt.Enabled and isRealTreeFruit(target.prompt) then
@@ -409,6 +459,7 @@ local encodedScript = "bG9jYWwgR3JlZWR5R3Jvd2VycyA9IHt9CgpmdW5jdGlvbiBHcmVlZHlHc
                                     root.CFrame = CFrame.new(targetPos, targetPart.Position)
                                 end)
                                 
+                                -- หน่วงเวลาสั้นๆ หลังวาร์ปกันบัค
                                 task.wait(TELEPORT_SETTLE_WAIT)
                             end
 
@@ -416,10 +467,12 @@ local encodedScript = "bG9jYWwgR3JlZWR5R3Jvd2VycyA9IHt9CgpmdW5jdGlvbiBHcmVlZHlHc
                                 fireProximityPrompt(target.prompt)
                             end)
                             
+                            -- หน่วงเวลาเล็กน้อยหลังกดเก็บ
                             task.wait(COLLECT_DELAY)
                         end
                     end
 
+                    -- เมื่อเก็บผลไม้หมดสวนเรียบร้อยแล้ว ค่อยดึงกลับจุดเดิม
                     if startCFrame and root and root.Parent then
                         pcall(function()
                             root.CFrame = startCFrame
@@ -440,20 +493,3 @@ local encodedScript = "bG9jYWwgR3JlZWR5R3Jvd2VycyA9IHt9CgpmdW5jdGlvbiBHcmVlZHlHc
 end
 
 return GreedyGrowers
-]]
-
--- ตัวถอดรหัสและรันอัตโนมัติ (Base64 Decoder)
-local b='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-local function decode(data)
-    data = string.gsub(data, '[^'..b..'=]', '')
-    return (data:gsub('.', function(x)
-        if (x == '=') then return '' end
-        local r,f='',(b:find(x)-1)
-        for i=6,1,-1 do r=r..(f%2^i-f%2^(i-1)>0 and '1' or '0') end
-        return r;
-    end):gsub('%d%d%d%d%d%d%d%d', function(x)
-        return string.char(tonumber(x,2))
-    end))
-end
-
-return loadstring(decode(encodedScript))()
