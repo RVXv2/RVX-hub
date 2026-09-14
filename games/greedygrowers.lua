@@ -1,5 +1,5 @@
 --[[
-    RVX-hub: Greedy Growers Module (ฉบับแก้ไขระบบตรวจจับ - ป้องกันป้าย Robux 100%)
+    RVX-hub: Greedy Growers Module (ฉบับแก้ไข Whitelist ล็อก FruitSpawn 100%)
 --]]
 
 local GreedyGrowers = {}
@@ -195,29 +195,20 @@ function GreedyGrowers.Init(Window, WindUI)
         end
     end
 
-    -- ===== [ระบบสแกนเป้าหมายใหม่] กรองป้าย Robux / ทั้งหมด / ปรับแต่ง ออก 100% =====
-    local function isPromptSafe(prompt, parentPart)
-        if not prompt or not parentPart then return false end
+    -- ===== [ระบบ Whitelist ล็อกเป้าผลไม้] =====
+    local function isRealFruitPrompt(prompt)
+        if not prompt or not prompt.Parent then return false end
 
-        local actionText = tostring(prompt.ActionText):lower()
-        local objectText = tostring(prompt.ObjectText):lower()
-        local partName = parentPart.Name:lower()
-        local modelName = (parentPart.Parent and parentPart.Parent.Name or ""):lower()
+        local parent = prompt.Parent
+        local grandParent = parent.Parent
 
-        -- 1. กรองคำต้องห้ามบนป้าย UI หรือ Robux (ตัดป้ายซื้อขายด้วย Robux 100%)
-        if actionText:find("ทั้งหมด") or objectText:find("ทั้งหมด")
-           or actionText:find("robux") or objectText:find("robux")
-           or actionText:find("ปรับแต่ง") or actionText:find("customize")
-           or partName:find("promptpart") or partName:find("customize")
-           or modelName:find("customize") or modelName:find("craft") then
-            return false
-        end
-
-        -- 2. ต้องมี Attribute หรือเป็นวัตถุในระบบต้นไม้จริงเท่านั้น
-        local isFruitAttr = parentPart:GetAttribute("Fruit") ~= nil or parentPart:GetAttribute("FruitType") ~= nil
-        local isTreeBase = partName:find("treebaseprompt") ~= nil or partName == "fruitspawn"
+        -- เช็กโครงสร้างแน่ชัดจาก Log สแกน: Parent ต้องชื่อ FruitSpawn และ GrandParent ต้องชื่อ FruitSpawns
+        local isFruitSpawnStructure = (parent.Name == "FruitSpawn") and (grandParent and grandParent.Name == "FruitSpawns")
         
-        return isFruitAttr or isTreeBase
+        -- ตรวจสอบ Attribute ป้องกันความผิดพลาด
+        local hasSpawnIndex = parent:GetAttribute("SpawnIndex") ~= nil
+
+        return isFruitSpawnStructure and hasSpawnIndex
     end
 
     local function scanOnlyRealFruits()
@@ -228,10 +219,9 @@ function GreedyGrowers.Init(Window, WindUI)
 
         for _, desc in ipairs(plotFolder:GetDescendants()) do
             if desc:IsA("ProximityPrompt") and desc.Enabled then
-                local parentPart = desc.Parent
-                if parentPart and isPromptSafe(desc, parentPart) then
+                if isRealFruitPrompt(desc) then
                     table.insert(fruitList, {
-                        part = parentPart,
+                        part = desc.Parent,
                         prompt = desc
                     })
                 end
@@ -294,7 +284,7 @@ function GreedyGrowers.Init(Window, WindUI)
         end,
     })
 
-    GrowersTab:Section({ Title = "เก็บผลไม้อัตโนมัติ", Desc = "วาปเก็บเฉพาะต้นไม้จริง กรองป้าย Robux ออก 100%" })
+    GrowersTab:Section({ Title = "เก็บผลไม้อัตโนมัติ", Desc = "วาปเก็บเฉพาะ FruitSpawn เท่านั้น (ตรงลูกผลไม้)" })
 
     GrowersTab:Toggle({
         Title = "เก็บผลไม้อัตโนมัติ",
@@ -388,7 +378,7 @@ function GreedyGrowers.Init(Window, WindUI)
     end)
 
     -- ===========================================================
-    -- ===== ลูป Auto Collect Fruit =====
+    -- ===== ลูป Auto Collect Fruit (วาปตรงเข้าหา FruitSpawn) =====
     -- ===========================================================
     task.spawn(function()
         while true do
@@ -409,10 +399,10 @@ function GreedyGrowers.Init(Window, WindUI)
                             local prompt = item.prompt
                             local part = item.part
 
-                            if prompt and prompt.Enabled and part and part.Parent and isPromptSafe(prompt, part) then
-                                setStatus("กำลังเก็บต้นไม้ต้นที่ (" .. i .. "/" .. #fruitItems .. ")")
+                            if prompt and prompt.Enabled and part and part.Parent and isRealFruitPrompt(prompt) then
+                                setStatus("กำลังเก็บผลไม้ลูกที่ (" .. i .. "/" .. #fruitItems .. ")")
 
-                                root.CFrame = part.CFrame + Vector3.new(0, 2, 0)
+                                root.CFrame = part.CFrame + Vector3.new(0, 1.5, 0)
                                 task.wait(0.1)
 
                                 pcall(function()
