@@ -1,5 +1,5 @@
 --[[
-    RVX-hub: Greedy Growers Module - Complete Fixed Version
+    RVX-hub: Greedy Growers Module (โมดูลเสริมเฉพาะแมพ - ฉบับแก้ไขบั๊กสแกนเด้ง UI)
 --]]
 
 local GreedyGrowers = {}
@@ -32,10 +32,11 @@ function GreedyGrowers.Init(Window, WindUI)
 
     -- ===== ตั้งค่าความเสถียร =====
     local LOOP_INTERVAL = 0.15
-    local VERIFY_WAIT = 0.3
+    local VERIFY_WAIT = 0.4
     local DISTANCE_SAFETY_MARGIN = 1.0
+    local TELEPORT_APPROACH_MARGIN = 2.0
     local TELEPORT_SETTLE_WAIT = 0.1
-    local TELEPORT_RETURN_WAIT = 0.1
+    local TELEPORT_RETURN_WAIT = 0.15
     local MIN_SELL_DELAY = 0.5
     local MAX_SELL_DELAY = 30.0
 
@@ -158,7 +159,7 @@ function GreedyGrowers.Init(Window, WindUI)
         return candidates
     end
 
-    -- ===== สแกนหาผลไม้ที่เก็บได้ในพล็อตของเรา =====
+    -- ===== สแกนหาผลไม้ที่เก็บได้ทั่วสวน (แก้ไขการตรวจจับให้เป๊ะขึ้น) =====
     local function getPlayerPlotsFolder()
         local bigField = workspace:FindFirstChild("BigField")
         return bigField and bigField:FindFirstChild("PlayerPlots")
@@ -190,30 +191,21 @@ function GreedyGrowers.Init(Window, WindUI)
         for _, plotFolder in ipairs(plots:GetChildren()) do
             if isOwnedByLocalPlayer(plotFolder) then
                 for _, desc in ipairs(plotFolder:GetDescendants()) do
-                    if desc:IsA("ProximityPrompt") and desc.Enabled then
-                        local actionText = tostring(desc.ActionText):lower()
-                        local objectText = tostring(desc.ObjectText):lower()
-                        local promptName = tostring(desc.Name):lower()
-                        
-                        -- ตรวจสอบเงื่อนไขว่าไม่ใช่ปุ่มซื้อของ Robux หรือ VIP
-                        local isRobuxOrShop = actionText:find("robux") 
-                            or objectText:find("robux")
-                            or actionText:find("buy") 
-                            or objectText:find("buy")
-                            or actionText:find("ซื้อ") 
-                            or objectText:find("ซื้อ")
-                            or promptName:find("gamepass")
-                            or promptName:find("shop")
+                    if desc:IsA("ProximityPrompt") then
+                        local spawnPart = desc.Parent
+                        local spawnsFolder = spawnPart and spawnPart.Parent
 
-                        if not isRobuxOrShop then
-                            local spawnPart = desc.Parent
-                            if spawnPart and spawnPart:IsA("BasePart") then
-                                table.insert(candidates, {
-                                    object = spawnPart,
-                                    prompt = desc,
-                                    plotName = plotFolder.Name,
-                                })
-                            end
+                        -- [จุดแก้ไข]: กรองอย่างเข้มงวดให้โดนเฉพาะ FruitSpawn หรือ TreeBasePrompt_ เท่านั้น
+                        -- ป้องกันการกดโดน CraftingBench (Customize), Decor และ Robux Prompt
+                        local isFruitSpawn = spawnPart and spawnsFolder and spawnPart.Name == "FruitSpawn" and spawnsFolder.Name == "FruitSpawns"
+                        local isTreeBase = spawnPart and string.find(spawnPart.Name, "^TreeBasePrompt_")
+
+                        if (isFruitSpawn or isTreeBase) and desc.Enabled then
+                            table.insert(candidates, {
+                                object = desc.Parent,
+                                prompt = desc,
+                                plotName = plotFolder.Name,
+                            })
                         end
                     end
                 end
@@ -243,10 +235,13 @@ function GreedyGrowers.Init(Window, WindUI)
         local part = getTargetPromptPart(targetObj, prompt)
         if not root or not part then return false, nil end
 
+        local maxDist = prompt.MaxActivationDistance or 5
+        local approachDist = math.max(maxDist - TELEPORT_APPROACH_MARGIN, 1)
         local originalCFrame = root.CFrame
 
         local ok = pcall(function()
-            root.CFrame = CFrame.new(part.Position)
+            local targetPos = part.Position + Vector3.new(0, 0, approachDist)
+            root.CFrame = CFrame.new(targetPos, part.Position)
         end)
 
         if not ok then return false, nil end
@@ -314,22 +309,20 @@ function GreedyGrowers.Init(Window, WindUI)
         end,
     })
 
-    GrowersTab:Section({ Title = "เก็บผลไม้อัตโนมัติ", Desc = "วาปเก็บผลไม้สุกทุกต้นในพล็อตของเราจนหมดสวน" })
+    GrowersTab:Section({ Title = "เก็บผลไม้อัตโนมัติ", Desc = "เก็บผลไม้สุกทุกต้นในพล็อตของเรา" })
 
     GrowersTab:Toggle({
         Title = "เก็บผลไม้อัตโนมัติ",
         Value = _G.AutoCollectFruit,
         Callback = function(state)
             _G.AutoCollectFruit = state
-            if not state then
-                setStatus("ปิดอยู่")
-            end
+            if not state then setStatus("ปิดอยู่") end
         end,
     })
 
     GrowersTab:Toggle({
         Title = "วาปไปเก็บถ้าไกลเกิน",
-        Desc = "วาปตัวละครไปยืนใกล้ผลไม้ชั่วคราวแล้ววาปกลับที่เดิมหลังเก็บหมด",
+        Desc = "วาปตัวละครไปยืนใกล้ผลไม้ชั่วคราวแล้ววาปกลับที่เดิม",
         Value = _G.AutoTeleportCollect,
         Callback = function(state)
             _G.AutoTeleportCollect = state
@@ -434,49 +427,52 @@ function GreedyGrowers.Init(Window, WindUI)
     end)
 
     -- ===========================================================
-    -- ===== ลูป Auto Collect Fruit (วนเก็บต่อเนื่องทั้งสวน) =====
+    -- ===== ลูป Auto Collect Fruit =====
     -- ===========================================================
     task.spawn(function()
+        local lastFruitLogKey = nil
         while true do
             if _G.AutoCollectFruit then
                 local plots = getPlayerPlotsFolder()
-                if plots then
+                if not plots then
+                    if lastFruitLogKey ~= "NO_PLOTS_FOLDER" then
+                        warn("[เก็บผลไม้][DEBUG] หา Workspace.BigField.PlayerPlots ไม่เจอเลย")
+                        lastFruitLogKey = "NO_PLOTS_FOLDER"
+                    end
+                else
                     local fruits = scanAllFruitPrompts()
+                    local logKey = "COUNT_" .. tostring(#fruits)
 
-                    if #fruits > 0 then
-                        local character = LocalPlayer.Character
-                        local root = character and character:FindFirstChild("HumanoidRootPart")
-                        local startCFrame = root and root.CFrame
+                    if #fruits == 0 then
+                        if lastFruitLogKey ~= logKey then
+                            print("[เก็บผลไม้][DEBUG] สแกนพล็อตแล้ว แต่ไม่เจอผลไม้ที่พร้อมเก็บตอนนี้ (พล็อตทั้งหมด: " .. #plots:GetChildren() .. ")")
+                            lastFruitLogKey = logKey
+                        end
+                    else
+                        lastFruitLogKey = nil
 
-                        for i, target in ipairs(fruits) do
-                            if not _G.AutoCollectFruit then break end
+                        local target = fruits[1]
 
-                            if target.prompt and target.prompt.Enabled and target.object then
-                                setStatus("กำลังเก็บผลไม้: " .. i .. "/" .. #fruits)
-
-                                if _G.AutoTeleportCollect and root then
-                                    pcall(function()
-                                        root.CFrame = CFrame.new(target.object.Position)
-                                    end)
-                                    task.wait(0.05)
-                                end
-
-                                pcall(function()
-                                    fireProximityPrompt(target.prompt)
-                                end)
-                                task.wait(0.08)
+                        local teleportBackFn = nil
+                        if _G.AutoTeleportCollect then
+                            local moved, backFn = teleportNearTarget(target.object, target.prompt)
+                            if moved then
+                                teleportBackFn = backFn
+                                setStatus("วาปไปเก็บผลไม้: " .. tostring(target.plotName))
+                                task.wait(TELEPORT_SETTLE_WAIT)
                             end
                         end
 
-                        if _G.AutoTeleportCollect and root and startCFrame then
-                            pcall(function()
-                                root.CFrame = startCFrame
-                            end)
-                        end
+                        setStatus("กำลังเก็บผลไม้: " .. tostring(target.plotName) .. " (เหลืออีก " .. #fruits .. " ลูก)")
+                        pcall(function()
+                            fireProximityPrompt(target.prompt)
+                        end)
+                        task.wait(VERIFY_WAIT)
 
-                        setStatus("เก็บผลไม้หมดสวนแล้ว รอชุดใหม่สุก...")
-                    else
-                        setStatus("ไม่มีผลไม้ที่พร้อมเก็บในขณะนี้")
+                        if teleportBackFn then
+                            task.wait(TELEPORT_RETURN_WAIT)
+                            teleportBackFn()
+                        end
                     end
                 end
             else
