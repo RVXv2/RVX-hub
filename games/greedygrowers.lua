@@ -1,28 +1,5 @@
 --[[
-    RVX-hub: Greedy Growers Module (โมดูลเสริมเฉพาะแมพ)
-
-    ไฟล์นี้ "ไม่ได้" สร้าง Window เอง — มันคาดหวังว่า universal.lua (หรือไฟล์หลัก)
-    จะเป็นคนสร้าง Window/WindUI ไว้ก่อนแล้ว (ผ่าน Core.Init) แล้วค่อยโหลดไฟล์นี้มา
-    เรียก GreedyGrowers.Init(Window, WindUI) เพื่อเพิ่ม Tab "Greedy Growers" ทับเข้าไป
-    เหมือนกับที่ RVXHub_Scripts.lua ถูกโหลดผ่าน Core.Scripts
-
-    ฝั่ง universal.lua ต้องมีโค้ดประมาณนี้ (ดูตัวอย่างเต็มในคำอธิบายที่แชทให้ไว้):
-
-        local MAP_MODULES = {
-            [74102906764176] = "https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/greedygrowers.lua",
-        }
-        local moduleUrl = MAP_MODULES[game.PlaceId]
-        if moduleUrl then
-            local ok, Module = pcall(function()
-                return loadstring(game:HttpGet(moduleUrl))()
-            end)
-            if ok and type(Module) == "table" and type(Module.Init) == "function" then
-                pcall(function() Module.Init(Window, WindUI) end)
-            end
-        end
-
-    ด้วยวิธีนี้ ฟีเจอร์ Auto Buy/Sell ในไฟล์นี้จะโผล่ "เฉพาะตอนอยู่ในแมพ Greedy Growers"
-    (PlaceId 74102906764176) เท่านั้น แมพอื่นจะไม่ถูกโหลดไฟล์นี้เลยตั้งแต่ต้น
+    RVX-hub: Greedy Growers Module (โมดูลเสริมเฉพาะแมพ) - Fixed Auto Collect
 --]]
 
 local GreedyGrowers = {}
@@ -55,11 +32,10 @@ function GreedyGrowers.Init(Window, WindUI)
 
     -- ===== ตั้งค่าความเสถียร =====
     local LOOP_INTERVAL = 0.15
-    local VERIFY_WAIT = 0.4
+    local VERIFY_WAIT = 0.3
     local DISTANCE_SAFETY_MARGIN = 1.0
-    local TELEPORT_APPROACH_MARGIN = 2.0
     local TELEPORT_SETTLE_WAIT = 0.1
-    local TELEPORT_RETURN_WAIT = 0.15
+    local TELEPORT_RETURN_WAIT = 0.1
     local MIN_SELL_DELAY = 0.5
     local MAX_SELL_DELAY = 30.0
 
@@ -182,14 +158,13 @@ function GreedyGrowers.Init(Window, WindUI)
         return candidates
     end
 
-    -- ===== สแกนหาผลไม้ที่เก็บได้ทั่วสวน (ทุกพล็อตของเรา) =====
+    -- ===== สแกนหาผลไม้ที่เก็บได้ทั่วสวน =====
     local function getPlayerPlotsFolder()
         local bigField = workspace:FindFirstChild("BigField")
         return bigField and bigField:FindFirstChild("PlayerPlots")
     end
 
     local function isOwnedByLocalPlayer(plotFolder)
-        -- ชื่อ Attribute เจ้าของพล็อตจริงตามที่เจอจากการสำรวจ: OwnerUserId
         local ownerId = plotFolder:GetAttribute("OwnerUserId")
             or plotFolder:GetAttribute("OwnerId")
             or plotFolder:GetAttribute("UserId")
@@ -204,7 +179,7 @@ function GreedyGrowers.Init(Window, WindUI)
             return tostring(ownerName) == LocalPlayer.Name or tostring(ownerName) == LocalPlayer.DisplayName
         end
 
-        return false -- ไม่มี Attribute เจ้าของเลย และไม่ใช่ Model พล็อตที่รู้จัก ถือว่าไม่ใช่ของเรา (ปลอดภัยไว้ก่อน)
+        return false
     end
 
     local function findMyPlotFolder(plots)
@@ -216,8 +191,7 @@ function GreedyGrowers.Init(Window, WindUI)
         return nil
     end
 
-    -- คำนวณตำแหน่ง "กลางสวน" ของพล็อตเรา จากค่าเฉลี่ยตำแหน่งจุดปลูกผลไม้ (FruitSpawn) ทั้งหมด
-    -- ถ้าพล็อตยังไม่มีต้นไม้เลย (ไม่เจอ FruitSpawn) จะ fallback ไปใช้ค่าเฉลี่ยของ BasePart ทั้งหมดในพล็อตแทน
+    -- คำนวณจุดศูนย์กลางพล็อตอย่างแม่นยำ (แก้ไขปัญหา CFrame หันเพี้ยน)
     local function computePlotCenterCFrame(plotFolder)
         local positions = {}
 
@@ -243,9 +217,7 @@ function GreedyGrowers.Init(Window, WindUI)
         end
         local center = sum / #positions
 
-        -- ยกสูงจากจุดกึ่งกลางเล็กน้อยกันวาปติดพื้น/ทะลุของ แล้วหันหน้าเข้าหาจุดกึ่งกลางพล็อต
-        local standPos = Vector3.new(center.X, center.Y + 5, center.Z)
-        return CFrame.new(standPos, center)
+        return CFrame.new(center + Vector3.new(0, 3, 0))
     end
 
     local function scanAllFruitPrompts()
@@ -256,20 +228,12 @@ function GreedyGrowers.Init(Window, WindUI)
         for _, plotFolder in ipairs(plots:GetChildren()) do
             if isOwnedByLocalPlayer(plotFolder) then
                 for _, desc in ipairs(plotFolder:GetDescendants()) do
-                    if desc:IsA("ProximityPrompt") then
-                        -- เอาเฉพาะผลไม้ที่ยังอยู่บนต้น: path ต้องเป็น .../FruitSpawns/FruitSpawn/ProximityPrompt
-                        -- ตัดพวก PlotFind (ของตกพื้น), TreeBasePrompt, Decor, Leaderboard ฯลฯ ออกทั้งหมด
-                        local spawnPart = desc.Parent -- ควรเป็น Part ชื่อ "FruitSpawn"
-                        local spawnsFolder = spawnPart and spawnPart.Parent -- ควรเป็นโฟลเดอร์ชื่อ "FruitSpawns"
-
-                        local isOnTree = spawnPart
-                            and spawnsFolder
-                            and spawnPart.Name == "FruitSpawn"
-                            and spawnsFolder.Name == "FruitSpawns"
-
-                        if isOnTree and desc.Enabled then
+                    if desc:IsA("ProximityPrompt") and desc.Enabled then
+                        local spawnPart = desc.Parent
+                        -- ตรวจสอบว่าเป็นผลไม้บนต้นไม้จริง หรือตรวจ Prompt ที่พร้อมทำงาน
+                        if spawnPart and spawnPart:IsA("BasePart") then
                             table.insert(candidates, {
-                                object = desc.Parent,
+                                object = spawnPart,
                                 prompt = desc,
                                 plotName = plotFolder.Name,
                             })
@@ -281,7 +245,7 @@ function GreedyGrowers.Init(Window, WindUI)
         return candidates
     end
 
-    -- ===== วาปและระยะ =====
+    -- ===== วาปและระยะ (ปรับปรุงตำแหน่งวาปให้ตรงจุด ProximityPrompt) =====
     local function getDistanceToPart(part)
         local character = LocalPlayer.Character
         local root = character and character:FindFirstChild("HumanoidRootPart")
@@ -302,13 +266,11 @@ function GreedyGrowers.Init(Window, WindUI)
         local part = getTargetPromptPart(targetObj, prompt)
         if not root or not part then return false, nil end
 
-        local maxDist = prompt.MaxActivationDistance or 5
-        local approachDist = math.max(maxDist - TELEPORT_APPROACH_MARGIN, 1)
         local originalCFrame = root.CFrame
 
         local ok = pcall(function()
-            local targetPos = part.Position + Vector3.new(0, 0, approachDist)
-            root.CFrame = CFrame.new(targetPos, part.Position)
+            -- วาปไปตำแหน่งของ Prompt โดยตรง (ปรับระดับความสูงให้พอยืนได้ไม่ทะลุ)
+            root.CFrame = CFrame.new(part.Position)
         end)
 
         if not ok then return false, nil end
@@ -327,7 +289,6 @@ function GreedyGrowers.Init(Window, WindUI)
     -- ===========================================================
     local GrowersTab = Window:Tab({ Title = "Greedy Growers", Icon = "sprout" })
 
-    -- แสดงสถานะสดๆ (อัปเดตผ่าน :SetDesc())
     local statusParagraph = GrowersTab:Paragraph({
         Title = "สถานะ",
         Desc = "รอเริ่มทำงาน...",
@@ -377,11 +338,8 @@ function GreedyGrowers.Init(Window, WindUI)
         end,
     })
 
-    GrowersTab:Section({ Title = "เก็บผลไม้อัตโนมัติ", Desc = "วาปไปกลางสวนก่อนครั้งเดียว แล้วเก็บผลไม้สุกทุกต้นในพล็อตของเราทีละลูก" })
+    GrowersTab:Section({ Title = "เก็บผลไม้อัตโนมัติ", Desc = "วาปเก็บผลไม้สุกทุกต้นในพล็อตของเรา" })
 
-    -- ตัวแปรนี้คุมว่า "วาปไปกลางสวนแล้วหรือยัง" ในรอบการเปิดใช้งานนี้
-    -- toggle callback ด้านล่างจะรีเซ็ตเป็น false ทุกครั้งที่เปิดใหม่ เพื่อวาปไปกลางสวนซ้ำ
-    -- (เผื่อผู้เล่นเดินไปที่อื่นระหว่างที่ปิดฟีเจอร์ไว้)
     local movedToGardenCenter = false
 
     GrowersTab:Toggle({
@@ -507,19 +465,11 @@ function GreedyGrowers.Init(Window, WindUI)
     -- ===== ลูป Auto Collect Fruit =====
     -- ===========================================================
     task.spawn(function()
-        local lastFruitLogKey = nil
         while true do
             if _G.AutoCollectFruit then
                 local plots = getPlayerPlotsFolder()
-                if not plots then
-                    if lastFruitLogKey ~= "NO_PLOTS_FOLDER" then
-                        warn("[เก็บผลไม้][DEBUG] หา Workspace.BigField.PlayerPlots ไม่เจอเลย")
-                        lastFruitLogKey = "NO_PLOTS_FOLDER"
-                    end
-                else
-                    -- ===== ขั้นแรก: วาปไปกลางสวนของเราก่อนครั้งเดียว =====
-                    -- ทำแค่ครั้งแรกหลังเปิดใช้งาน (หรือหลังปิดแล้วเปิดใหม่) กันปัญหาวาป
-                    -- ระยะไกลข้ามแมพไปกลับทุกรอบตอนเก็บทีละลูก ซึ่งดูไม่นิ่งและอาจมีปัญหา
+                if plots then
+                    -- วาปไปจุดศูนย์กลางพล็อตเฉพาะครั้งแรกที่เปิดใช้งาน
                     if not movedToGardenCenter then
                         local myPlot = findMyPlotFolder(plots)
                         if myPlot then
@@ -528,48 +478,31 @@ function GreedyGrowers.Init(Window, WindUI)
                             local root = character and character:FindFirstChild("HumanoidRootPart")
 
                             if centerCFrame and root then
-                                local ok = pcall(function()
+                                pcall(function()
                                     root.CFrame = centerCFrame
                                 end)
-                                if ok then
-                                    setStatus("วาปไปกลางสวนแล้ว กำลังเริ่มเก็บผลไม้...")
-                                    task.wait(TELEPORT_SETTLE_WAIT)
-                                end
+                                setStatus("วาปไปกลางสวนแล้ว กำลังเริ่มเก็บผลไม้...")
+                                task.wait(TELEPORT_SETTLE_WAIT)
                                 movedToGardenCenter = true
                             end
-                            -- ถ้า root ยังไม่พร้อม (character กำลังโหลด) ปล่อยให้ลองใหม่รอบถัดไป
-                        else
-                            -- ยังหาพล็อตของเราไม่เจอ (อาจยังโหลดไม่เสร็จ) รอรอบถัดไปแล้วลองใหม่
                         end
                     end
 
                     local fruits = scanAllFruitPrompts()
-                    local logKey = "COUNT_" .. tostring(#fruits)
 
-                    if #fruits == 0 then
-                        if lastFruitLogKey ~= logKey then
-                            print("[เก็บผลไม้][DEBUG] สแกนพล็อตแล้ว แต่ไม่เจอผลไม้ที่พร้อมเก็บตอนนี้ (พล็อตทั้งหมด: " .. #plots:GetChildren() .. ")")
-                            lastFruitLogKey = logKey
-                        end
-                    else
-                        lastFruitLogKey = nil -- รีเซ็ต กันพลาดตอนมีผลไม้ใหม่
-
+                    if #fruits > 0 then
                         local target = fruits[1]
-
-                        -- วาปไปยืนตรงหน้าผลไม้ทุกครั้ง (หันหน้าเข้าเก็บเป๊ะๆ กันปัญหาหันผิดทาง)
-                        -- เนื่องจากวาปไปกลางสวนไว้แล้วด้านบน จุด "กลับที่เดิม" ของแต่ละลูก
-                        -- จะเป็นตำแหน่งใกล้ๆ กลางสวนเสมอ ไม่ใช่ตำแหน่งไกลๆ ก่อนเปิดฟีเจอร์อีกต่อไป
                         local teleportBackFn = nil
+
                         if _G.AutoTeleportCollect then
                             local moved, backFn = teleportNearTarget(target.object, target.prompt)
                             if moved then
                                 teleportBackFn = backFn
-                                setStatus("วาปไปเก็บผลไม้: " .. tostring(target.plotName))
+                                setStatus("กำลังเก็บผลไม้ (เหลืออีก " .. #fruits .. " ลูก)")
                                 task.wait(TELEPORT_SETTLE_WAIT)
                             end
                         end
 
-                        setStatus("กำลังเก็บผลไม้: " .. tostring(target.plotName) .. " (เหลืออีก " .. #fruits .. " ลูก)")
                         pcall(function()
                             fireProximityPrompt(target.prompt)
                         end)
@@ -579,10 +512,12 @@ function GreedyGrowers.Init(Window, WindUI)
                             task.wait(TELEPORT_RETURN_WAIT)
                             teleportBackFn()
                         end
+                    else
+                        setStatus("ไม่มีผลไม้ที่พร้อมเก็บในขณะนี้")
                     end
                 end
             else
-                movedToGardenCenter = false -- ปิดฟีเจอร์ไว้ เปิดใหม่ครั้งหน้าจะวาปไปกลางสวนซ้ำอีกที
+                movedToGardenCenter = false
                 setStatus("ปิดอยู่")
             end
 
