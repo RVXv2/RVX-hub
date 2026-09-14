@@ -51,6 +51,12 @@ function Fisch.Init(Window, WindUI)
     local SellSingleFunc = EventsFolder:FindFirstChild("Sell")
     local VirtualUser = game:GetService("VirtualUser")
 
+    -- Remote ที่ใช้สำหรับโหมด "จับปลาทันที" (ยิง event ตรงแทนการจำลองกดปุ่ม/ดึงบาร์)
+    local PackagesNet = RS:FindFirstChild("packages") and RS.packages:FindFirstChild("Net")
+    local NetCast = PackagesNet and PackagesNet:FindFirstChild("RF/FishingRod/Cast")
+    local NetShake = PackagesNet and PackagesNet:FindFirstChild("RE/LureShake/Shake")
+    local NetReelFinish = PackagesNet and PackagesNet:FindFirstChild("RE/Reel/Finish")
+
     local fishLib = nil
     pcall(function()
         fishLib = require(RS.shared.modules.library.fish)
@@ -66,6 +72,7 @@ function Fisch.Init(Window, WindUI)
         AutoShake        = false,
         AutoReel         = false,
         AutoEquipRod     = false,
+        InstantCatch     = false, -- ทดลอง: ยิง remote ตรงให้ติดเบ็ด+ดึงเสร็จทันที แทนการรอเขย่า/ดึงบาร์ปกติ
 
         AutoSell         = false,
         SellInterval     = 30,
@@ -363,9 +370,52 @@ function Fisch.Init(Window, WindUI)
         end)
     end
 
+    -- ===== โหมด "จับปลาทันที" (ทดลอง) =====
+    -- ยิง remote ตรงแทนการจำลองกดปุ่มเขย่า/ดึงบาร์ตามเวลาจริง
+    -- ไม่รู้ argument ที่แท้จริงที่ remote ต้องการ จึงลองยิงแบบไม่มี argument ก่อน (pcall กันพัง)
+    -- ถ้ายิงไม่ติด (server เงียบ/ไม่ตอบ) จะไม่ error แต่ปลาจะไม่ติด ให้ปิดโหมดนี้แล้วใช้ปุ่มปกติแทน
+    local function attemptInstantCatch()
+        if not (NetShake or NetReelFinish) then return false end
+
+        local firedSomething = false
+
+        pcall(function()
+            if NetShake then
+                if NetShake.FireServer then
+                    NetShake:FireServer()
+                elseif NetShake.InvokeServer then
+                    NetShake:InvokeServer()
+                end
+                firedSomething = true
+            end
+        end)
+
+        task.wait(0.05)
+
+        pcall(function()
+            if NetReelFinish then
+                if NetReelFinish.FireServer then
+                    NetReelFinish:FireServer()
+                elseif NetReelFinish.InvokeServer then
+                    NetReelFinish:InvokeServer()
+                end
+                firedSomething = true
+            end
+        end)
+
+        return firedSomething
+    end
+
     -- ===== Loop: ตกปลา =====
     task.spawn(function()
         while _G.FischRunning and _G.FischRunId == thisRunId do
+            local bittenUIPresent = PlayerGui:FindFirstChild("shakeui") or PlayerGui:FindFirstChild("reel")
+
+            if State.InstantCatch and bittenUIPresent then
+                -- โหมดทดลอง: ลองยิงตรงก่อน ถ้ายิงได้ก็ข้ามการจำลองปุ่มปกติในรอบนี้
+                attemptInstantCatch()
+            end
+
             if State.FullAutoFish or State.AutoShake then handleShake() end
             if State.FullAutoFish or State.AutoReel then handleReel() end
             if State.FullAutoFish or State.AutoCast then handleCast() end
@@ -543,6 +593,15 @@ function Fisch.Init(Window, WindUI)
         Value = { Min = 20, Max = 100, Default = 100 },
         Callback = function(value)
             State.CastPower = value
+        end,
+    })
+
+    FischTab:Toggle({
+        Title = "จับปลาทันที (ทดลอง)",
+        Desc = "พอปลากัดปุ๊บ ลองยิงให้ติดเบ็ด+ดึงเสร็จทันทีเลย ไม่ต้องรอเขย่า/ดึงบาร์ — เป็นโหมดทดลอง ถ้าไม่ติดปลาให้ปิดแล้วใช้ปกติแทน",
+        Value = false,
+        Callback = function(state)
+            State.InstantCatch = state
         end,
     })
 
