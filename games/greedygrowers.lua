@@ -1,5 +1,5 @@
 --[[
-    RVX-hub: Greedy Growers Module (ฉบับเพิ่มระบบ Check Strict Filter กรองป้าย Robux / UI เด้ง 100%)
+    RVX-hub: Greedy Growers Module (ฉบับปิดระบบชนสิ่งกีดขวางขณะวาป + Strict Filter)
 --]]
 
 local GreedyGrowers = {}
@@ -184,16 +184,25 @@ function GreedyGrowers.Init(Window, WindUI)
         return nil
     end
 
-    -- ===== [ระบบเช็ก Strict Filter] ตรวจสอบว่าเป็นผลไม้จริงเท่านั้น =====
+    -- ===== ฟังก์ชันปิด/เปิดการชนของตัวละคร (ป้องกันตัวละครติดพาร์ทขณะวาป) =====
+    local function setCharacterCollision(enabled)
+        local character = LocalPlayer.Character
+        if not character then return end
+        for _, part in ipairs(character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = enabled
+            end
+        end
+    end
+
+    -- ===== ตรวจสอบว่าเป็นผลไม้จริงเท่านั้น =====
     local function isTargetRealFruit(prompt, parentPart)
         if not prompt or not parentPart then return false end
         
-        -- 1. กรองจากชื่อ Object และ Ancestor
         local partName = parentPart.Name
         local parentOfPart = parentPart.Parent
         local grandParentName = parentOfPart and parentOfPart.Name or ""
 
-        -- ป้องกันโครงสร้างของป้าย Robux หรือป้าย Customize
         if partName == "PromptPart" or partName:find("Customize") or partName:find("Robux") then
             return false
         end
@@ -201,7 +210,6 @@ function GreedyGrowers.Init(Window, WindUI)
             return false
         end
 
-        -- 2. กรองจากข้อความ ProximityPrompt
         local actionText = tostring(prompt.ActionText):lower()
         local objectText = tostring(prompt.ObjectText):lower()
 
@@ -211,7 +219,6 @@ function GreedyGrowers.Init(Window, WindUI)
             return false
         end
 
-        -- 3. ตรวจสอบ Attribute หรือโครงสร้างของผลไม้จริง
         local hasFruitAttribute = parentPart:GetAttribute("Fruit") ~= nil or parentPart:GetAttribute("FruitType") ~= nil
         local isInsideSpawnsFolder = (partName == "FruitSpawn" and grandParentName == "FruitSpawns")
         local isTreeBasePrompt = partName:find("TreeBasePrompt_") ~= nil
@@ -292,14 +299,17 @@ function GreedyGrowers.Init(Window, WindUI)
         end,
     })
 
-    GrowersTab:Section({ Title = "เก็บผลไม้อัตโนมัติ", Desc = "ระบบตรวจสอบผลไม้สุกแท้ วาปเก็บทีละผล" })
+    GrowersTab:Section({ Title = "เก็บผลไม้อัตโนมัติ", Desc = "วาปไร้แรงชนเก็บทีละลูกบนต้นไม้" })
 
     GrowersTab:Toggle({
         Title = "เก็บผลไม้อัตโนมัติ",
         Value = _G.AutoCollectFruit,
         Callback = function(state)
             _G.AutoCollectFruit = state
-            if not state then setStatus("ปิดอยู่") end
+            if not state then 
+                setStatus("ปิดอยู่")
+                setCharacterCollision(true)
+            end
         end,
     })
 
@@ -360,6 +370,7 @@ function GreedyGrowers.Init(Window, WindUI)
                         local root = character and character:FindFirstChild("HumanoidRootPart")
                         if root and targetSeed.object then
                             local origCFrame = root.CFrame
+                            setCharacterCollision(false)
                             root.CFrame = targetSeed.object:GetPivot() + Vector3.new(0, 2, 0)
                             setStatus("กำลังซื้อ: " .. targetSeed.seedType)
                             task.wait(0.1)
@@ -368,6 +379,7 @@ function GreedyGrowers.Init(Window, WindUI)
                             end)
                             task.wait(VERIFY_WAIT)
                             root.CFrame = origCFrame
+                            setCharacterCollision(true)
                         end
                     else
                         setStatus("เงินไม่พอซื้อ: " .. targetSeed.seedType)
@@ -381,7 +393,7 @@ function GreedyGrowers.Init(Window, WindUI)
     end)
 
     -- ===========================================================
-    -- ===== ลูป Auto Collect Fruit (ใช้ฟังก์ชัน Check ละเอียด) =====
+    -- ===== ลูป Auto Collect Fruit (ปิด CanCollide เพื่อให้ผ่านพาร์ทได้) =====
     -- ===========================================================
     task.spawn(function()
         while true do
@@ -395,17 +407,18 @@ function GreedyGrowers.Init(Window, WindUI)
                     if root then
                         local initialPos = root.CFrame
 
+                        -- ปิดระบบชนชั่วคราวขณะทำการวาปเก็บผลไม้
+                        setCharacterCollision(false)
+
                         for i, item in ipairs(fruitItems) do
                             if not _G.AutoCollectFruit then break end
 
                             local prompt = item.prompt
                             local part = item.part
 
-                            -- เช็กซ้ำอีกรอบก่อนวาปเข้าเก็บ
                             if prompt and prompt.Enabled and part and part.Parent and isTargetRealFruit(prompt, part) then
                                 setStatus("กำลังเก็บผลไม้ลูกที่ (" .. i .. "/" .. #fruitItems .. ")")
 
-                                -- วาปไปจ่อเหนือพาร์ทผลไม้
                                 root.CFrame = part.CFrame + Vector3.new(0, 1.5, 0)
                                 task.wait(0.1)
 
@@ -419,6 +432,9 @@ function GreedyGrowers.Init(Window, WindUI)
                         if root and root.Parent then
                             root.CFrame = initialPos
                         end
+                        
+                        -- คืนค่าการชนปกติหลังเก็บเสร็จ
+                        setCharacterCollision(true)
                         setStatus("เก็บผลไม้รอบนี้เสร็จแล้ว")
                     end
                 else
