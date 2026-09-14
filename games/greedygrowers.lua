@@ -1,5 +1,5 @@
 --[[
-    RVX-hub: Greedy Growers Module (ฉบับเพิ่มความเร็ว + เก็บผลไม้ต่อเนื่องไม่กลับที่เดิม)
+    RVX-hub: Greedy Growers Module (ฉบับปรับสมดุลความเร็ว + เอาปุ่มวาร์ปออก + กันตกสวนอัตโนมัติ)
 --]]
 
 local GreedyGrowers = {}
@@ -30,14 +30,13 @@ function GreedyGrowers.Init(Window, WindUI)
         end
     end
 
-    -- ===== ตั้งค่าความเสถียรและความเร็ว =====
-    local LOOP_INTERVAL = 0.05
+    -- ===== ตั้งค่าความเสถียรและระยะเวลาหน่วง =====
+    local LOOP_INTERVAL = 0.1
     local VERIFY_WAIT = 0.15
-    local FAST_COLLECT_WAIT = 0.05
-    local DISTANCE_SAFETY_MARGIN = 1.0
+    local TELEPORT_SETTLE_WAIT = 0.12 -- เพิ่มความเสถียรกันบัคตอนวาร์ป
+    local COLLECT_DELAY = 0.12        -- ระยะเวลาหน่วงตอนกดเก็บผลไม้กันติดบัค
     local TELEPORT_APPROACH_MARGIN = 2.0
-    local TELEPORT_SETTLE_WAIT = 0.05
-    local TELEPORT_RETURN_WAIT = 0.1
+    local MAX_PLOT_RADIUS = 75         -- รัศมีขอบเขตของสวน (หากออกห่างเกินจะวาร์ปดึงกลับ)
     local MIN_SELL_DELAY = 0.5
     local MAX_SELL_DELAY = 30.0
 
@@ -46,7 +45,6 @@ function GreedyGrowers.Init(Window, WindUI)
     _G.AutoSellAll = false
     _G.AutoSellInterval = 2.0
     _G.AutoCollectFruit = false
-    _G.AutoTeleportCollect = (_G.AutoTeleportCollect == nil) and true or _G.AutoTeleportCollect
 
     -- ===== ตารางราคาเมล็ด =====
     local SEED_PRICES = {
@@ -195,7 +193,26 @@ function GreedyGrowers.Init(Window, WindUI)
         return nil
     end
 
-    -- ===== ระบบกรองผลไม้จริงบนต้น (ตัดป้าย Robux ออก) =====
+    -- ===== ตรวจสอบว่ายังอยู่ในขอบเขตสวนหรือไม่ =====
+    local function checkAndKeepInPlot(plotFolder)
+        if not plotFolder then return end
+        local character = LocalPlayer.Character
+        local root = character and character:FindFirstChild("HumanoidRootPart")
+        if not root then return end
+
+        local plotCFrame = plotFolder:GetPivot()
+        local distFromPlot = (root.Position - plotCFrame.Position).Magnitude
+
+        -- หากหลุดออกนอกขอบเขตสวน ให้ดึงกลับมาตำแหน่งกลางสวนทันที
+        if distFromPlot > MAX_PLOT_RADIUS then
+            pcall(function()
+                root.CFrame = plotCFrame + Vector3.new(0, 3, 0)
+            end)
+            task.wait(0.1)
+        end
+    end
+
+    -- ===== ระบบกรองผลไม้จริงบนต้น =====
     local function isRealTreeFruit(prompt)
         if not prompt or not prompt.Parent then return false end
 
@@ -239,21 +256,6 @@ function GreedyGrowers.Init(Window, WindUI)
             end
         end
         return candidates
-    end
-
-    -- ===== วาปและระยะทาง =====
-    local function getDistanceToPart(part)
-        local character = LocalPlayer.Character
-        local root = character and character:FindFirstChild("HumanoidRootPart")
-        if not root or not part then return math.huge end
-        return (root.Position - part.Position).Magnitude
-    end
-
-    local function isWithinRange(targetObj, prompt)
-        local part = getTargetPromptPart(targetObj, prompt)
-        if not part then return true end
-        local maxDist = prompt.MaxActivationDistance or 5
-        return getDistanceToPart(part) <= math.max(maxDist - DISTANCE_SAFETY_MARGIN, 0)
     end
 
     local function teleportNearTarget(targetObj, prompt)
@@ -309,15 +311,6 @@ function GreedyGrowers.Init(Window, WindUI)
         end,
     })
 
-    GrowersTab:Toggle({
-        Title = "วาปไปซื้อถ้าไกลเกิน",
-        Desc = "วาปตัวละครไปยืนใกล้เมล็ดชั่วคราวแล้ววาปกลับที่เดิม",
-        Value = _G.AutoTeleportBuy,
-        Callback = function(state)
-            _G.AutoTeleportBuy = state
-        end,
-    })
-
     GrowersTab:Section({ Title = "ขายของอัตโนมัติ", Desc = "ขายของในตัวทั้งหมดตามรอบเวลาที่ตั้ง" })
 
     GrowersTab:Toggle({
@@ -336,7 +329,7 @@ function GreedyGrowers.Init(Window, WindUI)
         end,
     })
 
-    GrowersTab:Section({ Title = "เก็บผลไม้อัตโนมัติ", Desc = "เก็บผลไม้สุกทุกต้นในพล็อตของเรา (เก็บต่อเนื่องแบบไม่วาร์ปกลับ)" })
+    GrowersTab:Section({ Title = "เก็บผลไม้อัตโนมัติ", Desc = "วาร์ปเก็บผลไม้ในพล็อตอัตโนมัติ พร้อมระบบป้องกันหลุดนอกสวน" })
 
     GrowersTab:Toggle({
         Title = "เก็บผลไม้อัตโนมัติ",
@@ -344,15 +337,6 @@ function GreedyGrowers.Init(Window, WindUI)
         Callback = function(state)
             _G.AutoCollectFruit = state
             if not state then setStatus("ปิดอยู่") end
-        end,
-    })
-
-    GrowersTab:Toggle({
-        Title = "วาปไปเก็บถ้าไกลเกิน",
-        Desc = "วาปตัวละครไปยืนใกล้ผลไม้ชั่วคราวแล้ววาปกลับที่เดิมเมื่อเก็บครบหมด",
-        Value = _G.AutoTeleportCollect,
-        Callback = function(state)
-            _G.AutoTeleportCollect = state
         end,
     })
 
@@ -410,34 +394,19 @@ function GreedyGrowers.Init(Window, WindUI)
                     local cash = getCurrentCash()
 
                     if cash >= targetSeed.price then
-                        local inRange = isWithinRange(targetSeed.object, targetSeed.prompt)
-                        local teleportBackFn = nil
-
-                        if not inRange then
-                            if _G.AutoTeleportBuy then
-                                local moved, backFn = teleportNearTarget(targetSeed.object, targetSeed.prompt)
-                                if moved then
-                                    teleportBackFn = backFn
-                                    setStatus("วาปไปซื้อ: " .. targetSeed.seedType)
-                                    task.wait(TELEPORT_SETTLE_WAIT)
-                                    inRange = true
-                                end
-                            else
-                                setStatus("พบเมล็ดที่เปิดแต่ไกลเกิน: " .. targetSeed.seedType)
-                            end
-                        end
-
-                        if inRange then
-                            setStatus("กำลังซื้อ: " .. targetSeed.seedType)
+                        local moved, teleportBackFn = teleportNearTarget(targetSeed.object, targetSeed.prompt)
+                        if moved then
+                            setStatus("วาปไปซื้อ: " .. targetSeed.seedType)
+                            task.wait(TELEPORT_SETTLE_WAIT)
+                            
                             pcall(function()
                                 fireProximityPrompt(targetSeed.prompt)
                             end)
                             task.wait(VERIFY_WAIT)
-                        end
 
-                        if teleportBackFn then
-                            task.wait(TELEPORT_RETURN_WAIT)
-                            teleportBackFn()
+                            if teleportBackFn then
+                                teleportBackFn()
+                            end
                         end
                     else
                         setStatus("เงินไม่พอซื้อ: " .. targetSeed.seedType)
@@ -452,11 +421,18 @@ function GreedyGrowers.Init(Window, WindUI)
     end)
 
     -- ===========================================================
-    -- ===== ลูป Auto Collect Fruit (ปรับให้เก็บต่อเนื่อง รวดเร็ว ไม่วาร์ปกลับกลางทาง) =====
+    -- ===== ลูป Auto Collect Fruit (ปรับไม่ให้ไวเกินจนบัค + กันหลุดสวน) =====
     -- ===========================================================
     task.spawn(function()
         while true do
             if _G.AutoCollectFruit then
+                local myPlot = getMyPlotFolder()
+                
+                -- เช็คเสมอว่าถ้าหลุดสวนให้ดึงกลับเข้ามาที่สวนก่อน
+                if myPlot then
+                    checkAndKeepInPlot(myPlot)
+                end
+
                 local fruits = scanOnlyRealFruits()
 
                 if #fruits > 0 then
@@ -467,33 +443,37 @@ function GreedyGrowers.Init(Window, WindUI)
                     for i, target in ipairs(fruits) do
                         if not _G.AutoCollectFruit then break end
                         
-                        -- ตรวจสอบว่าผลไม้และ Prompt ยังใช้งานได้อยู่จริง
+                        -- เช็คขอบเขตสวนระหว่างวนเก็บผลไม้
+                        checkAndKeepInPlot(myPlot)
+
                         if target.prompt and target.prompt.Enabled and isRealTreeFruit(target.prompt) then
                             setStatus("กำลังเก็บผลไม้ (" .. i .. "/" .. #fruits .. "): " .. tostring(target.plotName))
 
-                            if _G.AutoTeleportCollect and root then
-                                local targetPart = getTargetPromptPart(target.object, target.prompt)
-                                if targetPart then
-                                    local maxDist = target.prompt.MaxActivationDistance or 5
-                                    local approachDist = math.max(maxDist - TELEPORT_APPROACH_MARGIN, 1)
-                                    
-                                    pcall(function()
-                                        local targetPos = targetPart.Position + Vector3.new(0, 0, approachDist)
-                                        root.CFrame = CFrame.new(targetPos, targetPart.Position)
-                                    end)
-                                    task.wait(FAST_COLLECT_WAIT)
-                                end
+                            local targetPart = getTargetPromptPart(target.object, target.prompt)
+                            if root and targetPart then
+                                local maxDist = target.prompt.MaxActivationDistance or 5
+                                local approachDist = math.max(maxDist - TELEPORT_APPROACH_MARGIN, 1)
+                                
+                                pcall(function()
+                                    local targetPos = targetPart.Position + Vector3.new(0, 0, approachDist)
+                                    root.CFrame = CFrame.new(targetPos, targetPart.Position)
+                                end)
+                                
+                                -- หน่วงเวลาสั้นๆ หลังวาร์ปกันบัค
+                                task.wait(TELEPORT_SETTLE_WAIT)
                             end
 
                             pcall(function()
                                 fireProximityPrompt(target.prompt)
                             end)
-                            task.wait(FAST_COLLECT_WAIT)
+                            
+                            -- หน่วงเวลาเล็กน้อยหลังกดเก็บ
+                            task.wait(COLLECT_DELAY)
                         end
                     end
 
-                    -- เมื่อวนเก็บจนหมดสวนแล้ว ค่อยวาร์ปกลับจุดเริ่มต้นเดิมครั้งเดียว
-                    if _G.AutoTeleportCollect and startCFrame and root and root.Parent then
+                    -- เมื่อเก็บผลไม้หมดสวนเรียบร้อยแล้ว ค่อยดึงกลับจุดเดิม
+                    if startCFrame and root and root.Parent then
                         pcall(function()
                             root.CFrame = startCFrame
                         end)
