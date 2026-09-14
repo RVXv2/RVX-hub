@@ -1,5 +1,5 @@
 --[[
-    RVX-hub: Greedy Growers Module (ฉบับแก้ไข Whitelist ล็อก FruitSpawn 100%)
+    RVX-hub: Greedy Growers Module (ฉบับล็อกเป้าเฉพาะ Model PlotTree 100%)
 --]]
 
 local GreedyGrowers = {}
@@ -195,20 +195,35 @@ function GreedyGrowers.Init(Window, WindUI)
         end
     end
 
-    -- ===== [ระบบ Whitelist ล็อกเป้าผลไม้] =====
-    local function isRealFruitPrompt(prompt)
+    -- ===== [ระบบตรวจสอบขั้นสูง: ล็อกเฉพาะ PlotTree] =====
+    local function isStrictRealFruit(prompt)
         if not prompt or not prompt.Parent then return false end
 
         local parent = prompt.Parent
         local grandParent = parent.Parent
 
-        -- เช็กโครงสร้างแน่ชัดจาก Log สแกน: Parent ต้องชื่อ FruitSpawn และ GrandParent ต้องชื่อ FruitSpawns
-        local isFruitSpawnStructure = (parent.Name == "FruitSpawn") and (grandParent and grandParent.Name == "FruitSpawns")
-        
-        -- ตรวจสอบ Attribute ป้องกันความผิดพลาด
-        local hasSpawnIndex = parent:GetAttribute("SpawnIndex") ~= nil
+        -- 1. ตรวจสอบชื่อ Part และ Folder ลำดับตรง
+        if parent.Name ~= "FruitSpawn" or not grandParent or grandParent.Name ~= "FruitSpawns" then
+            return false
+        end
 
-        return isFruitSpawnStructure and hasSpawnIndex
+        -- 2. ตรวจสอบ Attributes บังคับของผลไม้จริง
+        if parent:GetAttribute("SpawnIndex") == nil or parent:GetAttribute("FruitStartTime") == nil then
+            return false
+        end
+
+        -- 3. ตรวจสอบว่าต้องอยู่ภายใต้ Model "PlotTree_" เท่านั้น (บล็อกป้าย Robux หรือ Object อื่นๆ 100%)
+        local current = grandParent.Parent
+        local isUnderPlotTree = false
+        while current and current ~= workspace do
+            if current:IsA("Model") and current.Name:find("PlotTree") then
+                isUnderPlotTree = true
+                break
+            end
+            current = current.Parent
+        end
+
+        return isUnderPlotTree
     end
 
     local function scanOnlyRealFruits()
@@ -219,7 +234,7 @@ function GreedyGrowers.Init(Window, WindUI)
 
         for _, desc in ipairs(plotFolder:GetDescendants()) do
             if desc:IsA("ProximityPrompt") and desc.Enabled then
-                if isRealFruitPrompt(desc) then
+                if isStrictRealFruit(desc) then
                     table.insert(fruitList, {
                         part = desc.Parent,
                         prompt = desc
@@ -284,7 +299,7 @@ function GreedyGrowers.Init(Window, WindUI)
         end,
     })
 
-    GrowersTab:Section({ Title = "เก็บผลไม้อัตโนมัติ", Desc = "วาปเก็บเฉพาะ FruitSpawn เท่านั้น (ตรงลูกผลไม้)" })
+    GrowersTab:Section({ Title = "เก็บผลไม้อัตโนมัติ", Desc = "วาปเก็บผลไม้ที่อยู่ใต้ PlotTree เท่านั้น" })
 
     GrowersTab:Toggle({
         Title = "เก็บผลไม้อัตโนมัติ",
@@ -378,7 +393,7 @@ function GreedyGrowers.Init(Window, WindUI)
     end)
 
     -- ===========================================================
-    -- ===== ลูป Auto Collect Fruit (วาปตรงเข้าหา FruitSpawn) =====
+    -- ===== ลูป Auto Collect Fruit =====
     -- ===========================================================
     task.spawn(function()
         while true do
@@ -399,7 +414,7 @@ function GreedyGrowers.Init(Window, WindUI)
                             local prompt = item.prompt
                             local part = item.part
 
-                            if prompt and prompt.Enabled and part and part.Parent and isRealFruitPrompt(prompt) then
+                            if prompt and prompt.Enabled and part and part.Parent and isStrictRealFruit(prompt) then
                                 setStatus("กำลังเก็บผลไม้ลูกที่ (" .. i .. "/" .. #fruitItems .. ")")
 
                                 root.CFrame = part.CFrame + Vector3.new(0, 1.5, 0)
