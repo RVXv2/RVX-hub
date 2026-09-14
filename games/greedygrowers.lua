@@ -1,5 +1,5 @@
 --[[
-    RVX-hub: Greedy Growers Module (ฉบับรวมระบบครบ + Optimize ลดอาการแล็ก)
+    RVX-hub: Greedy Growers Module (ฉบับสมบูรณ์: ปลูก + ใส่ปุ๋ย + ตรวจจับตัวคูณนิ่งกดเก็บให้อัตโนมัติ + Optimize หายแล็ก)
 --]]
 
 local GreedyGrowers = {}
@@ -271,7 +271,7 @@ function GreedyGrowers.Init(Window, WindUI)
         end
     end
 
-    -- ===== สแกนหาแปลงปลูกที่ว่างเปล่าในพล็อตตัวเอง (Optimize) =====
+    -- ===== สแกนหาแปลงปลูกที่ว่างเปล่าในพล็อตตัวเอง =====
     local function getOnlyPlantPrompt()
         local myPlot = getMyPlotFolder()
         if not myPlot then return nil end
@@ -300,7 +300,7 @@ function GreedyGrowers.Init(Window, WindUI)
         return nil
     end
 
-    -- ===== ระบบตรวจจับตัวคูณหยุดนิ่งเพื่อเก็บ (Optimize ลดแล็ก) =====
+    -- ===== ระบบตรวจจับตัวคูณหยุดนิ่งเพื่อเก็บ (ฉบับแก้การไม่เก็บให้อัตโนมัติ) =====
     local function checkAndCollectFreeze()
         local myPlot = getMyPlotFolder()
         if not myPlot then return false, 0, false end
@@ -314,7 +314,8 @@ function GreedyGrowers.Init(Window, WindUI)
                 local adornee = gui.Adornee or gui.Parent
                 local pos = adornee:IsA("BasePart") and adornee.Position or (adornee:IsA("Model") and adornee.PrimaryPart and adornee.PrimaryPart.Position)
 
-                if pos and (hrp.Position - pos).Magnitude < 18 then
+                -- เพิ่มระยะตรวจจับขึ้นเป็น 45 เพื่อรองรับต้นไม้สูง
+                if pos and (hrp.Position - pos).Magnitude < 45 then
                     local currentMult = 0
 
                     for _, label in ipairs(gui:GetDescendants()) do
@@ -329,14 +330,15 @@ function GreedyGrowers.Init(Window, WindUI)
                     if currentMult > 1 then
                         local isFrozen = false
                         
-                        if math.abs(currentMult - lastMultValue) < 0.01 then
+                        if math.abs(currentMult - lastMultValue) < 0.001 then
                             sameCount = sameCount + 1
                         else
                             sameCount = 0
                         end
                         lastMultValue = currentMult
 
-                        if sameCount >= 2 then
+                        -- นิ่งติดกันเพียง 1 รอบการสแกนก็สั่งเก็บทันที
+                        if sameCount >= 1 then
                             isFrozen = true
                         end
 
@@ -348,7 +350,10 @@ function GreedyGrowers.Init(Window, WindUI)
                                         forceSwitchToSeed()
                                         task.wait(0.05)
 
+                                        -- สั่งกดเก็บอัตโนมัติ (ยิงคำสั่ง 2 รอบติดกัน)
                                         if fireProximityPrompt then
+                                            fireProximityPrompt(prompt)
+                                            task.wait(0.05)
                                             fireProximityPrompt(prompt)
                                         else
                                             VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
@@ -617,7 +622,7 @@ function GreedyGrowers.Init(Window, WindUI)
     end)
 
     -- ===========================================================
-    -- ===== ลูป Auto Plant & Freeze Collect Detector (Optimize) =====
+    -- ===== ลูป Auto Plant & Freeze Collect Detector =====
     -- ===========================================================
     task.spawn(function()
         while true do
@@ -625,7 +630,7 @@ function GreedyGrowers.Init(Window, WindUI)
                 local collected, mult, isFrozen = checkAndCollectFreeze()
                 if collected then
                     if isFrozen then
-                        setStatus(string.format("❄️ ตัวคูณหยุดเพิ่มที่ x%.2f! กำลังเก็บ...", mult))
+                        setStatus(string.format("❄️ ตัวคูณหยุดเพิ่มที่ x%.2f! เก็บเรียบร้อยแล้ว", mult))
                     else
                         setStatus(string.format("💰 เก็บเกี่ยว x%.2f ถึงเป้าหมายแล้ว!", mult))
                     end
@@ -664,7 +669,7 @@ function GreedyGrowers.Init(Window, WindUI)
                 end
             end
 
-            task.wait(0.6)
+            task.wait(0.5)
         end
     end)
 
@@ -732,7 +737,7 @@ function GreedyGrowers.Init(Window, WindUI)
         end
     end)
 
-    print("[Greedy Growers] โหลด Tab และระบบ Freeze Detector (Optimize) เรียบร้อย")
+    print("[Greedy Growers] โหลด Tab และระบบ Freeze Detector สมบูรณ์เรียบร้อย")
 end
 
 return GreedyGrowers
