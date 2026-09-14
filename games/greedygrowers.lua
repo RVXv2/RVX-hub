@@ -189,7 +189,14 @@ function GreedyGrowers.Init(Window, WindUI)
     end
 
     local function isOwnedByLocalPlayer(plotFolder)
-        -- เช็ค Attribute ที่อาจบ่งบอกเจ้าของพล็อต ถ้าไม่มีข้อมูลเลยให้ถือว่าเป็นของเรา (fallback)
+        -- ชื่อ Attribute เจ้าของพล็อตจริงตามที่เจอจากการสำรวจ: OwnerUserId
+        local ownerId = plotFolder:GetAttribute("OwnerUserId")
+            or plotFolder:GetAttribute("OwnerId")
+            or plotFolder:GetAttribute("UserId")
+        if ownerId ~= nil then
+            return tostring(ownerId) == tostring(LocalPlayer.UserId)
+        end
+
         local ownerName = plotFolder:GetAttribute("Owner")
             or plotFolder:GetAttribute("OwnerName")
             or plotFolder:GetAttribute("PlayerName")
@@ -197,12 +204,7 @@ function GreedyGrowers.Init(Window, WindUI)
             return tostring(ownerName) == LocalPlayer.Name or tostring(ownerName) == LocalPlayer.DisplayName
         end
 
-        local ownerId = plotFolder:GetAttribute("OwnerId") or plotFolder:GetAttribute("UserId")
-        if ownerId ~= nil then
-            return tostring(ownerId) == tostring(LocalPlayer.UserId)
-        end
-
-        return true -- ไม่มี Attribute เจ้าของให้เช็ค ถือว่าเป็นของเรา
+        return false -- ไม่มี Attribute เจ้าของเลย และไม่ใช่ Model พล็อตที่รู้จัก ถือว่าไม่ใช่ของเรา (ปลอดภัยไว้ก่อน)
     end
 
     local function scanAllFruitPrompts()
@@ -448,44 +450,61 @@ function GreedyGrowers.Init(Window, WindUI)
     -- ===== ลูป Auto Collect Fruit =====
     -- ===========================================================
     task.spawn(function()
+        local lastFruitLogKey = nil
         while true do
             if _G.AutoCollectFruit then
-                local fruits = scanAllFruitPrompts()
-
-                if #fruits > 0 then
-                    local target = fruits[1]
-                    local inRange = isWithinRange(target.object, target.prompt)
-                    local teleportBackFn = nil
-
-                    if not inRange then
-                        if _G.AutoTeleportCollect then
-                            local moved, backFn = teleportNearTarget(target.object, target.prompt)
-                            if moved then
-                                teleportBackFn = backFn
-                                setStatus("วาปไปเก็บผลไม้: " .. tostring(target.plotName))
-                                task.wait(TELEPORT_SETTLE_WAIT)
-                                inRange = true
-                            end
-                        else
-                            setStatus("พบผลไม้แต่ไกลเกิน: " .. tostring(target.plotName))
-                        end
-                    end
-
-                    if inRange then
-                        setStatus("กำลังเก็บผลไม้: " .. tostring(target.plotName) .. " (เหลืออีก " .. #fruits .. " ลูก)")
-                        pcall(function()
-                            fireProximityPrompt(target.prompt)
-                        end)
-                        task.wait(VERIFY_WAIT)
-                    end
-
-                    if teleportBackFn then
-                        task.wait(TELEPORT_RETURN_WAIT)
-                        teleportBackFn()
+                local plots = getPlayerPlotsFolder()
+                if not plots then
+                    if lastFruitLogKey ~= "NO_PLOTS_FOLDER" then
+                        warn("[เก็บผลไม้][DEBUG] หา Workspace.BigField.PlayerPlots ไม่เจอเลย")
+                        lastFruitLogKey = "NO_PLOTS_FOLDER"
                     end
                 else
-                    setStatus("ไม่พบผลไม้ที่เก็บได้ตอนนี้")
+                    local fruits = scanAllFruitPrompts()
+                    local logKey = "COUNT_" .. tostring(#fruits)
+
+                    if #fruits == 0 then
+                        if lastFruitLogKey ~= logKey then
+                            print("[เก็บผลไม้][DEBUG] สแกนพล็อตแล้ว แต่ไม่เจอผลไม้ที่พร้อมเก็บตอนนี้ (พล็อตทั้งหมด: " .. #plots:GetChildren() .. ")")
+                            lastFruitLogKey = logKey
+                        end
+                    else
+                        lastFruitLogKey = nil -- รีเซ็ต กันพลาดตอนมีผลไม้ใหม่
+
+                        local target = fruits[1]
+                        local inRange = isWithinRange(target.object, target.prompt)
+                        local teleportBackFn = nil
+
+                        if not inRange then
+                            if _G.AutoTeleportCollect then
+                                local moved, backFn = teleportNearTarget(target.object, target.prompt)
+                                if moved then
+                                    teleportBackFn = backFn
+                                    setStatus("วาปไปเก็บผลไม้: " .. tostring(target.plotName))
+                                    task.wait(TELEPORT_SETTLE_WAIT)
+                                    inRange = true
+                                end
+                            else
+                                setStatus("พบผลไม้แต่ไกลเกิน: " .. tostring(target.plotName))
+                            end
+                        end
+
+                        if inRange then
+                            setStatus("กำลังเก็บผลไม้: " .. tostring(target.plotName) .. " (เหลืออีก " .. #fruits .. " ลูก)")
+                            pcall(function()
+                                fireProximityPrompt(target.prompt)
+                            end)
+                            task.wait(VERIFY_WAIT)
+                        end
+
+                        if teleportBackFn then
+                            task.wait(TELEPORT_RETURN_WAIT)
+                            teleportBackFn()
+                        end
+                    end
                 end
+            else
+                setStatus("ปิดอยู่")
             end
 
             task.wait(LOOP_INTERVAL)
