@@ -1,5 +1,5 @@
 --[[
-    RVX-hub: Greedy Growers Module (ฉบับเจาะจงต้นไม้ + ตัดป้ายปรับแต่ง/โต๊ะคราฟต์แบบเด็ดขาด)
+    RVX-hub: Greedy Growers Module (ฉบับแก้ไขระบบตรวจจับ - ป้องกันป้าย Robux 100%)
 --]]
 
 local GreedyGrowers = {}
@@ -195,43 +195,45 @@ function GreedyGrowers.Init(Window, WindUI)
         end
     end
 
-    -- ===== [ระบบสแกนเป้าหมายแบบเจาะจง] คัดโต๊ะคราฟต์/ป้ายปรับแต่งออก 100% =====
+    -- ===== [ระบบสแกนเป้าหมายใหม่] กรองป้าย Robux / ทั้งหมด / ปรับแต่ง ออก 100% =====
+    local function isPromptSafe(prompt, parentPart)
+        if not prompt or not parentPart then return false end
+
+        local actionText = tostring(prompt.ActionText):lower()
+        local objectText = tostring(prompt.ObjectText):lower()
+        local partName = parentPart.Name:lower()
+        local modelName = (parentPart.Parent and parentPart.Parent.Name or ""):lower()
+
+        -- 1. กรองคำต้องห้ามบนป้าย UI หรือ Robux (ตัดป้ายซื้อขายด้วย Robux 100%)
+        if actionText:find("ทั้งหมด") or objectText:find("ทั้งหมด")
+           or actionText:find("robux") or objectText:find("robux")
+           or actionText:find("ปรับแต่ง") or actionText:find("customize")
+           or partName:find("promptpart") or partName:find("customize")
+           or modelName:find("customize") or modelName:find("craft") then
+            return false
+        end
+
+        -- 2. ต้องมี Attribute หรือเป็นวัตถุในระบบต้นไม้จริงเท่านั้น
+        local isFruitAttr = parentPart:GetAttribute("Fruit") ~= nil or parentPart:GetAttribute("FruitType") ~= nil
+        local isTreeBase = partName:find("treebaseprompt") ~= nil or partName == "fruitspawn"
+        
+        return isFruitAttr or isTreeBase
+    end
+
     local function scanOnlyRealFruits()
         local plotFolder = getMyPlotFolder()
         if not plotFolder then return {} end
 
         local fruitList = {}
 
-        -- ค้นหาเฉพาะ Folder หรือ Model ต้นไม้ในพล็อต
         for _, desc in ipairs(plotFolder:GetDescendants()) do
             if desc:IsA("ProximityPrompt") and desc.Enabled then
                 local parentPart = desc.Parent
-                if parentPart then
-                    local partName = parentPart.Name
-                    local modelName = parentPart.Parent and parentPart.Parent.Name or ""
-
-                    -- เช็ก Blacklist วัตถุตกแต่ง/โต๊ะคราฟต์/ป้าย Robux
-                    local isBlacklisted = partName:find("Craft") 
-                        or partName:find("Customize") 
-                        or partName:find("Bench")
-                        or partName:find("Sign")
-                        or modelName:find("Craft")
-                        or modelName:find("Customize")
-                        or modelName:find("Bench")
-                        or modelName:find("Decor")
-
-                    -- รับเฉพาะ Prompt ที่อยู่บน FruitSpawn หรือ TreeBasePrompt หรือ Model ต้นไม้
-                    local isTreeOrFruit = partName:find("Fruit") 
-                        or partName:find("Tree") 
-                        or modelName:find("Tree")
-                        or modelName:find("Plant")
-
-                    if isTreeOrFruit and not isBlacklisted then
-                        table.insert(fruitList, {
-                            part = parentPart,
-                            prompt = desc
-                        })
-                    end
+                if parentPart and isPromptSafe(desc, parentPart) then
+                    table.insert(fruitList, {
+                        part = parentPart,
+                        prompt = desc
+                    })
                 end
             end
         end
@@ -292,7 +294,7 @@ function GreedyGrowers.Init(Window, WindUI)
         end,
     })
 
-    GrowersTab:Section({ Title = "เก็บผลไม้อัตโนมัติ", Desc = "วาปเก็บเฉพาะต้นไม้ คัดป้ายโต๊ะปรับแต่งออก 100%" })
+    GrowersTab:Section({ Title = "เก็บผลไม้อัตโนมัติ", Desc = "วาปเก็บเฉพาะต้นไม้จริง กรองป้าย Robux ออก 100%" })
 
     GrowersTab:Toggle({
         Title = "เก็บผลไม้อัตโนมัติ",
@@ -386,7 +388,7 @@ function GreedyGrowers.Init(Window, WindUI)
     end)
 
     -- ===========================================================
-    -- ===== ลูป Auto Collect Fruit (วาปตรงเข้าหาโคนต้นไม้ทีละต้น) =====
+    -- ===== ลูป Auto Collect Fruit =====
     -- ===========================================================
     task.spawn(function()
         while true do
@@ -407,10 +409,9 @@ function GreedyGrowers.Init(Window, WindUI)
                             local prompt = item.prompt
                             local part = item.part
 
-                            if prompt and prompt.Enabled and part and part.Parent then
+                            if prompt and prompt.Enabled and part and part.Parent and isPromptSafe(prompt, part) then
                                 setStatus("กำลังเก็บต้นไม้ต้นที่ (" .. i .. "/" .. #fruitItems .. ")")
 
-                                -- วาปไปตำแหน่งของโคนต้นไม้โดยตรง
                                 root.CFrame = part.CFrame + Vector3.new(0, 2, 0)
                                 task.wait(0.1)
 
