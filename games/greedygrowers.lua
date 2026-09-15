@@ -1,5 +1,5 @@
 --[[
-    RVX-hub: Greedy Growers Module (ระบบครบจบ: Auto Buy/Sell + Auto Collect Fruit + Auto Plant & Freeze Detector)
+    RVX-hub: Greedy Growers Module (ระบบครบจบ: Auto Buy/Sell + New Auto Collect Fruit + Auto Plant & Freeze Detector)
 --]]
 
 local GreedyGrowers = {}
@@ -16,10 +16,14 @@ function GreedyGrowers.Init(Window, WindUI)
     local VirtualInputManager = game:GetService("VirtualInputManager")
     local LocalPlayer = Players.LocalPlayer
 
-    -- ===== ค้นหา Remote สำหรับขายของ =====
+    -- ===== ค้นหา Remote สำหรับขายของ และ เก็บผลไม้ =====
     local sellAllRemote = nil
+    local collectAllRemote = nil
+
     pcall(function()
-        sellAllRemote = ReplicatedStorage.Packages._Index["sleitnick_knit@1.6.0"].knit.Services.SellStandService.RF.SellAll
+        local KnitServices = ReplicatedStorage.Packages._Index["sleitnick_knit@1.6.0"].knit.Services
+        sellAllRemote = KnitServices.SellStandService.RF.SellAll
+        collectAllRemote = KnitServices.PlayerPlotService.RF.CollectAllFruits
     end)
 
     if not sellAllRemote then
@@ -31,13 +35,20 @@ function GreedyGrowers.Init(Window, WindUI)
         end
     end
 
+    if not collectAllRemote then
+        for _, desc in ipairs(ReplicatedStorage:GetDescendants()) do
+            if desc:IsA("RemoteFunction") and desc.Name == "CollectAllFruits" then
+                collectAllRemote = desc
+                break
+            end
+        end
+    end
+
     -- ===== ตั้งค่าความเสถียรและระยะเวลาหน่วง =====
     local LOOP_INTERVAL = 0.1
     local VERIFY_WAIT = 0.15
     local TELEPORT_SETTLE_WAIT = 0.12
-    local COLLECT_DELAY = 0.12
     local TELEPORT_APPROACH_MARGIN = 2.0
-    local MAX_PLOT_RADIUS = 75
     local MIN_SELL_DELAY = 0.5
     local MAX_SELL_DELAY = 30.0
 
@@ -218,59 +229,6 @@ function GreedyGrowers.Init(Window, WindUI)
         return candidates
     end
 
-    -- ===== สแกนหา พล็อตของเรา =====
-    local function getPlayerPlotsFolder()
-        local bigField = workspace:FindFirstChild("BigField")
-        return bigField and bigField:FindFirstChild("PlayerPlots")
-    end
-
-    local function isOwnedByLocalPlayer(plotFolder)
-        local ownerId = plotFolder:GetAttribute("OwnerUserId")
-            or plotFolder:GetAttribute("OwnerId")
-            or plotFolder:GetAttribute("UserId")
-        if ownerId ~= nil then
-            return tostring(ownerId) == tostring(LocalPlayer.UserId)
-        end
-
-        local ownerName = plotFolder:GetAttribute("Owner")
-            or plotFolder:GetAttribute("OwnerName")
-            or plotFolder:GetAttribute("PlayerName")
-        if ownerName ~= nil then
-            return tostring(ownerName) == LocalPlayer.Name or tostring(ownerName) == LocalPlayer.DisplayName
-        end
-
-        return false
-    end
-
-    local function getMyPlotFolder()
-        local plots = getPlayerPlotsFolder()
-        if not plots then return nil end
-        for _, plotFolder in ipairs(plots:GetChildren()) do
-            if isOwnedByLocalPlayer(plotFolder) then
-                return plotFolder
-            end
-        end
-        return nil
-    end
-
-    -- ===== ตรวจสอบขอบเขตสวน =====
-    local function checkAndKeepInPlot(plotFolder)
-        if not plotFolder then return end
-        local character = LocalPlayer.Character
-        local root = character and character:FindFirstChild("HumanoidRootPart")
-        if not root then return end
-
-        local plotCFrame = plotFolder:GetPivot()
-        local distFromPlot = (root.Position - plotCFrame.Position).Magnitude
-
-        if distFromPlot > MAX_PLOT_RADIUS then
-            pcall(function()
-                root.CFrame = plotCFrame + Vector3.new(0, 3, 0)
-            end)
-            task.wait(0.1)
-        end
-    end
-
     -- ===== สแกนหาแปลงปลูกที่ว่างเปล่าใกล้ตัว =====
     local function getOnlyPlantPrompt()
         local char = LocalPlayer.Character
@@ -362,52 +320,6 @@ function GreedyGrowers.Init(Window, WindUI)
             end
         end
         return false, 0, false
-    end
-
-    -- ===== ระบบกรองผลไม้จริงบนต้น (สำหรับ Auto Collect ทั่วไป) =====
-    local function isRealTreeFruit(prompt)
-        if not prompt or not prompt.Parent then return false end
-
-        local part = prompt.Parent
-        local grandParent = part.Parent
-
-        if prompt.ObjectText:find("Collect All") or prompt.ActionText == "Buy" then
-            return false
-        end
-
-        if part.Name ~= "FruitSpawn" or not grandParent or grandParent.Name ~= "FruitSpawns" then
-            return false
-        end
-
-        local plotFolder = getMyPlotFolder()
-        if plotFolder and plotFolder:IsA("Model") then
-            local plotPivot = plotFolder:GetPivot()
-            local heightDifference = part.Position.Y - plotPivot.Position.Y
-            if heightDifference < 3.5 then
-                return false
-            end
-        end
-
-        return true
-    end
-
-    local function scanOnlyRealFruits()
-        local plotFolder = getMyPlotFolder()
-        if not plotFolder then return {} end
-
-        local candidates = {}
-        for _, desc in ipairs(plotFolder:GetDescendants()) do
-            if desc:IsA("ProximityPrompt") and desc.Enabled then
-                if isRealTreeFruit(desc) then
-                    table.insert(candidates, {
-                        object = desc.Parent,
-                        prompt = desc,
-                        plotName = plotFolder.Name,
-                    })
-                end
-            end
-        end
-        return candidates
     end
 
     local function teleportNearTarget(targetObj, prompt)
@@ -519,10 +431,10 @@ function GreedyGrowers.Init(Window, WindUI)
         end,
     })
 
-    GrowersTab:Section({ Title = "เก็บผลไม้อัตโนมัติ (วาร์ปเก็บ)", Desc = "วาร์ปเก็บผลไม้ทุกต้นในพล็อตอัตโนมัติ" })
+    GrowersTab:Section({ Title = "เก็บผลไม้อัตโนมัติ (Fast Remote)", Desc = "ดึงผลไม้เข้าตัวทันทีผ่าน Remote ไม่ต้องวาร์ป" })
 
     GrowersTab:Toggle({
-        Title = "เก็บผลไม้อัตโนมัติ (วาร์ปเก็บ)",
+        Title = "เก็บผลไม้อัตโนมัติ (Fast Collect)",
         Value = _G.AutoCollectFruit,
         Callback = function(state)
             _G.AutoCollectFruit = state
@@ -663,70 +575,26 @@ function GreedyGrowers.Init(Window, WindUI)
     end)
 
     -- ===========================================================
-    -- ===== ลูป Auto Collect Fruit (แบบวาร์ปดั้งเดิม) =====
+    -- ===== ลูป Auto Collect Fruit (ระบบใหม่: Remote Direct) =====
     -- ===========================================================
     task.spawn(function()
         while true do
             if _G.AutoCollectFruit then
-                local myPlot = getMyPlotFolder()
-                
-                if myPlot then
-                    checkAndKeepInPlot(myPlot)
-                end
-
-                local fruits = scanOnlyRealFruits()
-
-                if #fruits > 0 then
-                    local character = LocalPlayer.Character
-                    local root = character and character:FindFirstChild("HumanoidRootPart")
-                    local startCFrame = root and root.CFrame
-
-                    for i, target in ipairs(fruits) do
-                        if not _G.AutoCollectFruit then break end
-                        
-                        checkAndKeepInPlot(myPlot)
-
-                        if target.prompt and target.prompt.Enabled and isRealTreeFruit(target.prompt) then
-                            setStatus("กำลังเก็บผลไม้ (" .. i .. "/" .. #fruits .. "): " .. tostring(target.plotName))
-
-                            local targetPart = getTargetPromptPart(target.object, target.prompt)
-                            if root and targetPart then
-                                local maxDist = target.prompt.MaxActivationDistance or 5
-                                local approachDist = math.max(maxDist - TELEPORT_APPROACH_MARGIN, 1)
-                                
-                                pcall(function()
-                                    local targetPos = targetPart.Position + Vector3.new(0, 0, approachDist)
-                                    root.CFrame = CFrame.new(targetPos, targetPart.Position)
-                                end)
-                                
-                                task.wait(TELEPORT_SETTLE_WAIT)
-                            end
-
-                            pcall(function()
-                                fireProximityPrompt(target.prompt)
-                            end)
-                            
-                            task.wait(COLLECT_DELAY)
-                        end
-                    end
-
-                    if startCFrame and root and root.Parent then
-                        pcall(function()
-                            root.CFrame = startCFrame
-                        end)
-                    end
-
-                    setStatus("เก็บผลไม้หมดรอบแล้ว")
+                if collectAllRemote then
+                    pcall(function()
+                        setStatus("กำลังเก็บผลไม้ในสวน...")
+                        collectAllRemote:InvokeServer()
+                    end)
                 else
-                    setStatus("ไม่มีผลไม้สุกในพล็อต")
+                    setStatus("ไม่พบ Remote เก็บผลไม้")
                 end
             end
 
-            task.wait(LOOP_INTERVAL)
+            task.wait(0.5) -- หน่วงเวลา 0.5 วินาทีต่อรอบ
         end
     end)
 
-    print("[Greedy Growers] โหลด Tab และระบบ Freeze Detector เรียบร้อย")
+    print("[Greedy Growers] โหลด Tab และระบบ Fast Collect เรียบร้อย")
 end
 
 return GreedyGrowers
