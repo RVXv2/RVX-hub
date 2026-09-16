@@ -25,6 +25,10 @@
 local AnimeDice = {}
 
 function AnimeDice.Init(Window, WindUI)
+    if type(Window) ~= "table" or type(Window.Tab) ~= "function" then
+        warn("[Anime Dice] Init ถูกเรียกด้วย Window ที่ไม่ถูกต้อง (type: " .. type(Window) .. ") — ข้ามการโหลด Anime Dice tabs เพื่อกันพัง")
+        return
+    end
 
 --[[
     ==============================================================================

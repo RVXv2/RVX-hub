@@ -44,6 +44,15 @@ end
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
+-- ===== แมพที่ไม่ต้องการให้โชว์แท็บกลาง (เพลง/ดูโอไอดีเพลง/เทเลพอต/มิก) =====
+-- เพิ่ม PlaceId เข้าไปในตารางนี้ได้ถ้าอยากซ่อนแท็บกลางสำหรับแมพอื่นในอนาคต
+local HIDE_UNIVERSAL_TABS_FOR = {
+    [113290951185459] = true, -- Anime Dice
+}
+local hideUniversalTabs = HIDE_UNIVERSAL_TABS_FOR[game.PlaceId] == true
+
+if not hideUniversalTabs then
+
 -- ===== แท็บเพลง (ค้นหา/คัดลอกเท่านั้น) =====
 local Songs = loadstring(game:HttpGet("https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/songs.lua"))()
 Songs.AddSongsTab(Window, WindUI, false)
@@ -733,6 +742,8 @@ MixTab:Button({
         WindUI:Notify({ Title = "Anti Lag", Content = "คืนค่าทุกอย่างแล้ว", Duration = 3 })
     end,
 })
+
+end -- ปิด if not hideUniversalTabs
 
 -- ===== ตั้งค่า (ต้องอยู่ล่างสุดเสมอ) =====
 Core.Settings(Window, WindUI)
