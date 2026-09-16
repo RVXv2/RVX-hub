@@ -1,5 +1,5 @@
 --[[
-    RVX-hub: Greedy Growers Module (ระบบครบจบ: Auto Buy/Sell + Auto Collect Fruit + Auto Plant & Freeze Detector)
+    RVX-hub: Greedy Growers Module (อัปเดตเปลี่ยน Rarity Toggle เป็น Dropdown UI)
 --]]
 
 local GreedyGrowers = {}
@@ -16,7 +16,7 @@ function GreedyGrowers.Init(Window, WindUI)
     local VirtualInputManager = game:GetService("VirtualInputManager")
     local LocalPlayer = Players.LocalPlayer
 
-    -- ===== ดึง Knit Services (เพิ่ม Safety Check เพื่อป้องกัน Error หากหา path ไม่เจอ) =====
+    -- ===== ดึง Knit Services =====
     local KnitServices = ReplicatedStorage:FindFirstChild("Packages") 
         and ReplicatedStorage.Packages:FindFirstChild("_Index") 
         and ReplicatedStorage.Packages._Index:FindFirstChild("sleitnick_knit@1.6.0") 
@@ -56,7 +56,6 @@ function GreedyGrowers.Init(Window, WindUI)
     _G.AutoSellInterval = 2.0
     _G.AutoCollectFruit = false
     
-    -- ระบบ Auto Plant & Freeze Detector
     _G.AutoPlant = false
     _G.AutoCollectFreeze = false
     _G.TargetMultiplier = 100000
@@ -71,9 +70,8 @@ function GreedyGrowers.Init(Window, WindUI)
         Enum.KeyCode.Seven, Enum.KeyCode.Eight, Enum.KeyCode.Nine
     }
 
-    -- ===== ตารางราคาเมล็ด (อัปเดตราคาแบบย่อยให้ครอบคลุม) =====
+    -- ===== ตารางราคาเมล็ด =====
     local SEED_PRICES = {
-        -- Common / Rare / Epic
         Oak         = 0,
         Pine        = 25,
         Apple       = 200,
@@ -82,8 +80,6 @@ function GreedyGrowers.Init(Window, WindUI)
         Orange      = 10000,
         Lemon       = 15000,
         Avocado     = 20000,
-
-        -- Legendary / Mythic / Celestial
         Cherry      = 2500000,
         Mango       = 5000000,
         Coconut     = 10000000,
@@ -93,8 +89,6 @@ function GreedyGrowers.Init(Window, WindUI)
         DragonFruit = 7000000000,
         Glowing     = 500000000000,
         Blooming    = 750000000000,
-
-        -- Secret / Divine / Transcendent / Ancient / Ethereal / Godly
         Magic       = 500000000000000,
         Pizza       = 850000000000000,
         Diamond     = 1e18,
@@ -132,10 +126,27 @@ function GreedyGrowers.Init(Window, WindUI)
         GODLY        = "พระเจ้า",
     }
 
+    -- สร้างรายการตัวเลือกใน Dropdown แบบ Display Text (เช่น "COMMON / ธรรมดา")
+    local dropdownOptions = {}
+    local optionToRarityMap = {}
+
     _G.AllowedRarities = _G.AllowedRarities or {}
+
     for _, r in ipairs(RARITY_LIST) do
+        local label = r .. " / " .. (RARITY_THAI[r] or r)
+        table.insert(dropdownOptions, label)
+        optionToRarityMap[label] = r
+        
         if _G.AllowedRarities[r] == nil then
             _G.AllowedRarities[r] = true
+        end
+    end
+
+    -- ดึงค่าตั้งต้นสำหรับ Dropdown
+    local defaultSelected = {}
+    for label, r in pairs(optionToRarityMap) do
+        if _G.AllowedRarities[r] then
+            table.insert(defaultSelected, label)
         end
     end
 
@@ -175,7 +186,6 @@ function GreedyGrowers.Init(Window, WindUI)
         end
     end
 
-    -- ===== ฟังก์ชันสลับถือเมล็ดตาม Hotbar =====
     local function forceSwitchToSeed()
         local char = LocalPlayer.Character
         if not char then return end
@@ -207,7 +217,6 @@ function GreedyGrowers.Init(Window, WindUI)
         end
     end
 
-    -- ===== ฟังก์ชันกดปุ๋ยวิเศษกลางจอ =====
     local function clickMagicFertilizer()
         local viewPort = workspace.CurrentCamera.ViewportSize
         local targetX = viewPort.X * 0.70
@@ -218,7 +227,6 @@ function GreedyGrowers.Init(Window, WindUI)
         VirtualInputManager:SendMouseButtonEvent(targetX, targetY, 0, false, game, 0)
     end
 
-    -- ===== สแกนสายพานซื้อเมล็ด =====
     local function getConveyorFolder()
         local bigField = workspace:FindFirstChild("BigField")
         return bigField and bigField:FindFirstChild("ConveyorSeeds")
@@ -254,7 +262,6 @@ function GreedyGrowers.Init(Window, WindUI)
         return candidates
     end
 
-    -- ===== สแกนหาแปลงปลูกที่ว่างเปล่าใกล้ตัว =====
     local function getOnlyPlantPrompt()
         local char = LocalPlayer.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -280,7 +287,6 @@ function GreedyGrowers.Init(Window, WindUI)
         return nil
     end
 
-    -- ===== ระบบตรวจจับตัวคูณหยุดนิ่งเพื่อเก็บ (Freeze Detector) =====
     local function checkAndCollectFreeze()
         local char = LocalPlayer.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -405,7 +411,7 @@ function GreedyGrowers.Init(Window, WindUI)
         Value = _G.AutoCollectFreeze,
         Callback = function(state)
             _G.AutoCollectFreeze = state
-            if not state then setStatus("ปิดการเก็บเมื่อคูณนิ่ง") end
+            if not state me then setStatus("ปิดการเก็บเมื่อคูณนิ่ง") end
         end,
     })
 
@@ -427,7 +433,7 @@ function GreedyGrowers.Init(Window, WindUI)
         end,
     })
 
-    GrowersTab:Section({ Title = "ซื้อเมล็ดอัตโนมัติ", Desc = "สแกนสายพานแล้วซื้อเฉพาะ rarity ที่เปิดไว้" })
+    GrowersTab:Section({ Title = "ซื้อเมล็ดอัตโนมัติ", Desc = "สแกนสายพานแล้วซื้อเฉพาะ rarity ที่เลือกไว้" })
 
     GrowersTab:Toggle({
         Title = "ซื้ออัตโนมัติ",
@@ -435,6 +441,36 @@ function GreedyGrowers.Init(Window, WindUI)
         Callback = function(state)
             _G.AutoBuySeed = state
             if not state then setStatus("ปิดอยู่") end
+        end,
+    })
+
+    -- ===== เปลี่ยนจาก Toggles รายอันมาเป็น Multi-Select Dropdown =====
+    GrowersTab:Dropdown({
+        Title = "เลือก Rarity เมล็ดที่จะซื้อ",
+        Desc = "สามารถเลือกได้หลายรายการพร้อมกัน",
+        Values = dropdownOptions,
+        Value = defaultSelected,
+        Multi = true,
+        Callback = function(selectedValues)
+            -- รีเซ็ตค่าเป็น false ก่อน
+            for _, r in ipairs(RARITY_LIST) do
+                _G.AllowedRarities[r] = false
+            end
+            
+            -- อัปเดตเฉพาะอันที่เลือกใน Dropdown
+            if type(selectedValues) == "table" then
+                for _, label in ipairs(selectedValues) do
+                    local rarityKey = optionToRarityMap[label]
+                    if rarityKey then
+                        _G.AllowedRarities[rarityKey] = true
+                    end
+                end
+            elseif type(selectedValues) == "string" then
+                local rarityKey = optionToRarityMap[selectedValues]
+                if rarityKey then
+                    _G.AllowedRarities[rarityKey] = true
+                end
+            end
         end,
     })
 
@@ -466,18 +502,6 @@ function GreedyGrowers.Init(Window, WindUI)
             if not state then setStatus("ปิดอยู่") end
         end,
     })
-
-    GrowersTab:Section({ Title = "เลือก Rarity ที่จะซื้อ", Desc = "ปิดตัวไหนไว้ สคริปต์จะข้ามเมล็ด rarity นั้นไปเฉยๆ" })
-
-    for _, r in ipairs(RARITY_LIST) do
-        GrowersTab:Toggle({
-            Title = r .. " / " .. (RARITY_THAI[r] or r),
-            Value = _G.AllowedRarities[r],
-            Callback = function(state)
-                _G.AllowedRarities[r] = state
-            end,
-        })
-    end
 
     -- ===========================================================
     -- ===== ลูป Auto Sell =====
@@ -591,7 +615,7 @@ function GreedyGrowers.Init(Window, WindUI)
     end)
 
     -- ===========================================================
-    -- ===== ลูป Auto Collect Fruit (เช็คก่อนเรียกใช้ Remote) =====
+    -- ===== ลูป Auto Collect Fruit =====
     -- ===========================================================
     task.spawn(function()
         while true do
@@ -610,7 +634,7 @@ function GreedyGrowers.Init(Window, WindUI)
         end
     end)
 
-    print("[Greedy Growers] โหลด Tab และระบบ Freeze Detector เรียบร้อย")
+    print("[Greedy Growers] โหลดเมนูแบบ Dropdown เรียบร้อย")
 end
 
 return GreedyGrowers
