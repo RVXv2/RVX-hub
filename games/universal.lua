@@ -13,6 +13,7 @@ local Window, WindUI = Core.Init(mapName)
 local MAP_MODULES = {
     [74102906764176] = "https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/greedygrowers.lua", -- Greedy Growers
     [16732694052] = "https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/fisch.lua", -- Fisch
+    [113290951185459] = "https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/animedice.lua", -- Anime Dice
 }
 
 do
@@ -370,11 +371,6 @@ local function StartFly()
         local camCFrame = camera.CFrame
 
         if inputMagnitude > 0.02 then
-            -- ผสมทิศทางอินพุต (หน้า-หลัง/ซ้าย-ขวา) เข้ากับทิศทางกล้องแบบเต็มรูปแบบ
-            -- (รวมมุมก้ม-เงยด้วย) แทนการบวกความสูงจากมุมกล้องแยกต่างหากแบบเดิม
-            -- วิธีนี้ทำให้บินไปทิศที่มองจริงๆ เหมือนเครื่องบิน/นก และถ้าไม่ได้
-            -- กดเดินเลยจะลอยนิ่งอยู่กับที่ ไม่ขยับขึ้นลงเองแค่เพราะแหงนกล้อง
-            -- (ก่อนหน้านี้อ่าน camCFrame.LookVector.Y ตรงๆ ทำให้ลอยแม้ยืนเฉยๆ)
             local flatRight = Vector3.new(camCFrame.RightVector.X, 0, camCFrame.RightVector.Z)
             flatRight = flatRight.Magnitude > 0.001 and flatRight.Unit or Vector3.new(1, 0, 0)
 
@@ -434,8 +430,6 @@ MixTab:Slider({
     end,
 })
 
--- ช่องกรอกตัวเลขความเร็วบินเอง ไว้ตั้งค่านอกช่วงของสไลเดอร์ (เช่น 5000+)
--- ครอบ pcall ไว้เผื่อ WindUI บางเวอร์ชันใช้ syntax ของ Input ต่างไปเล็กน้อย
 pcall(function()
     MixTab:Input({
         Title = "กำหนดความเร็วบินเอง",
