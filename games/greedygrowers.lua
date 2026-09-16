@@ -17,14 +17,20 @@ function GreedyGrowers.Init(Window, WindUI)
     local LocalPlayer = Players.LocalPlayer
 
     -- ===== ดึง Knit Services =====
-    local KnitServices = ReplicatedStorage.Packages._Index["sleitnick_knit@1.6.0"].knit.Services
-    local PlayerPlot = KnitServices.PlayerPlotService
+    local KnitServices = ReplicatedStorage:FindFirstChild("Packages") 
+        and ReplicatedStorage.Packages:FindFirstChild("_Index") 
+        and ReplicatedStorage.Packages._Index:FindFirstChild("sleitnick_knit@1.6.0") 
+        and ReplicatedStorage.Packages._Index["sleitnick_knit@1.6.0"].knit.Services
+
+    local PlayerPlot = KnitServices and KnitServices:FindFirstChild("PlayerPlotService")
 
     -- ===== ค้นหา Remote สำหรับขายของ =====
     local sellAllRemote = nil
-    pcall(function()
-        sellAllRemote = KnitServices.SellStandService.RF.SellAll
-    end)
+    if KnitServices and KnitServices:FindFirstChild("SellStandService") then
+        pcall(function()
+            sellAllRemote = KnitServices.SellStandService.RF.SellAll
+        end)
+    end
 
     if not sellAllRemote then
         for _, desc in ipairs(ReplicatedStorage:GetDescendants()) do
@@ -56,47 +62,92 @@ function GreedyGrowers.Init(Window, WindUI)
     _G.TargetMultiplier = 100000
     _G.SelectedSlot = 2
 
+    local lastMultValue = 0
+    local sameCount = 0
+
     local numKeyCodes = {
         Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three,
         Enum.KeyCode.Four, Enum.KeyCode.Five, Enum.KeyCode.Six,
         Enum.KeyCode.Seven, Enum.KeyCode.Eight, Enum.KeyCode.Nine
     }
 
-    -- ===== ตารางราคาเมล็ด =====
+    -- ===== ตารางราคาเมล็ด (อัปเดตตรงตาม Wiki ล่าสุด) =====
     local SEED_PRICES = {
+        -- Common
         Oak         = 0,
         Pine        = 25,
+
+        -- Rare
         Apple       = 200,
         Peach       = 350,
         Fig         = 500,
+
+        -- Epic
         Orange      = 10000,
         Lemon       = 15000,
         Avocado     = 20000,
+
+        -- Legendary
         Cherry      = 2500000,
         Mango       = 5000000,
         Coconut     = 10000000,
+
+        -- Mythic
         Banana      = 3000000000,
         Starfruit   = 4500000000,
+        Dragonfruit = 7000000000,
         DragonFruit = 7000000000,
+
+        -- Celestial
         Glowing     = 500000000000,
         Blooming    = 750000000000,
+
+        -- Secret
         Magic       = 500000000000000,
         Pizza       = 850000000000000,
-        Diamond     = 1000000000000000000,
-        Void        = 1750000000000000000,
+
+        -- Divine
+        Diamond     = 1e18,       -- $1 Qi
+        Void        = 1.75e18,    -- $1.75 Qi
+
+        -- Transcendent
+        Mushroom    = 7e21,       -- $7 Sx
+        Money       = 14e21,      -- $14 Sx
+
+        -- Ancient
+        Glowshroom  = 3.5e27,     -- $3.5 Oc
+        Elder       = 5e27,       -- $5 Oc
+
+        -- Ethereal
+        Inferno     = 3.5e33,     -- $3.5 De
+        SpiritTree  = 5e33,       -- $5 De
+        ["Spirit tree"] = 5e33,
+
+        -- Godly
+        Prismatic   = 5e42,       -- $5e+42
+        Astral      = 7.5e42,     -- $7.5e+42
     }
 
     -- ===== รายชื่อ Rarity =====
-    local RARITY_LIST = {"COMMON", "RARE", "EPIC", "LEGENDARY", "MYTHIC", "CELESTIAL", "SECRET", "DIVINE"}
+    local RARITY_LIST = {
+        "COMMON", "RARE", "EPIC", "LEGENDARY", "MYTHIC", 
+        "CELESTIAL", "SECRET", "DIVINE", "TRANSCENDENT", 
+        "ANCIENT", "ETHEREAL", "GODLY"
+    }
+
     local RARITY_THAI = {
-        COMMON    = "ธรรมดา",
-        RARE      = "หายาก",
-        EPIC      = "เอพิค",
-        LEGENDARY = "ตำนาน",
-        MYTHIC    = "มายา / มิติก",
-        CELESTIAL = "สวรรค์",
-        SECRET    = "ลับ",
-        DIVINE    = "เทพ",
+        COMMON       = "ธรรมดา",
+        RARE         = "หายาก",
+        EPIC         = "เอพิค",
+        LEGENDARY    = "ตำนาน",
+        MYTHIC       = "มายา / มิติก",
+        CELESTIAL    = "สวรรค์",
+        SECRET       = "ลับ",
+        DIVINE       = "เทพ",
+        TRANSCENDENT = "เหนือธรรมชาติ",
+        ANCIENT      = "โบราณ",
+        ETHEREAL     = "วิญญาณ / เหนือโลก",
+        GODLY        = "พระเจ้า",
     }
 
     _G.AllowedRarities = _G.AllowedRarities or {}
@@ -116,6 +167,10 @@ function GreedyGrowers.Init(Window, WindUI)
     local function parseMoney(text)
         if type(text) ~= "string" then return 0 end
         local cleaned = text:gsub("%$", ""):gsub(",", ""):gsub("%s", "")
+
+        local eNum = tonumber(cleaned)
+        if eNum then return eNum end
+
         local numPart, suffix = cleaned:match("^([%d%.]+)(%a*)$")
         if not numPart then return 0 end
         local num = tonumber(numPart) or 0
@@ -243,13 +298,11 @@ function GreedyGrowers.Init(Window, WindUI)
         return nil
     end
 
-    -- ========================================================
-    -- ระบบตรวจจับการเก็บผลไม้เมื่อตัวคูณนิ่ง (Freeze Detector)
-    -- ========================================================
+    -- ===== ระบบตรวจจับตัวคูณหยุดนิ่งเพื่อเก็บ (Freeze Detector) =====
     local function checkAndCollectFreeze()
         local char = LocalPlayer.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        if not hrp then return end
+        if not hrp then return false, 0, false end
 
         for _, gui in ipairs(workspace:GetDescendants()) do
             if gui:IsA("BillboardGui") or gui:IsA("SurfaceGui") then
@@ -257,16 +310,51 @@ function GreedyGrowers.Init(Window, WindUI)
                 local pos = adornee:IsA("BasePart") and adornee.Position or (adornee:IsA("Model") and adornee.PrimaryPart and adornee.PrimaryPart.Position)
 
                 if pos and (hrp.Position - pos).Magnitude < 25 then
-                    local rootModel = gui:FindFirstAncestorOfClass("Model") or adornee
-                    if rootModel then
-                        for _, prompt in ipairs(rootModel:GetDescendants()) do
-                            if prompt:IsA("ProximityPrompt") and prompt.Enabled then
-                                if fireProximityPrompt then
-                                    fireProximityPrompt(prompt)
-                                else
-                                    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
-                                    task.wait(0.05)
-                                    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+                    local currentMult = 0
+
+                    for _, label in ipairs(gui:GetDescendants()) do
+                        if label:IsA("TextLabel") and label.Text:find("x") then
+                            local numStr = label.Text:match("([%d%.]+)x") or label.Text:match("x([%d%.]+)")
+                            if numStr then 
+                                currentMult = tonumber(numStr) or 0 
+                            end
+                        end
+                    end
+
+                    if currentMult > 1 then
+                        local isFrozen = false
+                        
+                        if math.abs(currentMult - lastMultValue) < 0.01 then
+                            sameCount = sameCount + 1
+                        else
+                            sameCount = 0
+                        end
+                        lastMultValue = currentMult
+
+                        if sameCount >= 2 then
+                            isFrozen = true
+                        end
+
+                        if currentMult >= _G.TargetMultiplier or isFrozen then
+                            local rootModel = gui:FindFirstAncestorOfClass("Model") or adornee
+                            if rootModel then
+                                for _, prompt in ipairs(rootModel:GetDescendants()) do
+                                    if prompt:IsA("ProximityPrompt") and prompt.Enabled then
+                                        forceSwitchToSeed()
+                                        task.wait(0.05)
+
+                                        if fireProximityPrompt then
+                                            fireProximityPrompt(prompt)
+                                        else
+                                            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+                                            task.wait(0.05)
+                                            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+                                        end
+
+                                        sameCount = 0
+                                        lastMultValue = 0
+                                        return true, currentMult, isFrozen
+                                    end
                                 end
                             end
                         end
@@ -274,6 +362,7 @@ function GreedyGrowers.Init(Window, WindUI)
                 end
             end
         end
+        return false, 0, false
     end
 
     local function teleportNearTarget(targetObj, prompt)
@@ -520,14 +609,16 @@ function GreedyGrowers.Init(Window, WindUI)
     end)
 
     -- ===========================================================
-    -- ===== ลูป Auto Collect Fruit =====
+    -- ===== ลูป Auto Collect Fruit (ผ่าน Knit Remote) =====
     -- ===========================================================
     task.spawn(function()
         while true do
             if _G.AutoCollectFruit then
                 pcall(function()
                     setStatus("กำลังทำงาน...")
-                    PlayerPlot.RF.CollectAllFruits:InvokeServer()
+                    if PlayerPlot and PlayerPlot:FindFirstChild("RF") and PlayerPlot.RF:FindFirstChild("CollectAllFruits") then
+                        PlayerPlot.RF.CollectAllFruits:InvokeServer()
+                    end
                     checkAndCollectFreeze()
                 end)
                 setStatus("รอรอบถัดไป...")
