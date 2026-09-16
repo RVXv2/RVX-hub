@@ -1,5 +1,5 @@
 --[[
-    RVX-hub: Greedy Growers Module (อัปเดตเปลี่ยน Rarity Toggle เป็น Dropdown UI)
+    RVX-hub: Greedy Growers Module (เวอร์ชันปรับปรุง UI Dropdown และแก้ Syntax Error)
 --]]
 
 local GreedyGrowers = {}
@@ -126,7 +126,7 @@ function GreedyGrowers.Init(Window, WindUI)
         GODLY        = "พระเจ้า",
     }
 
-    -- สร้างรายการตัวเลือกใน Dropdown แบบ Display Text (เช่น "COMMON / ธรรมดา")
+    -- สร้างรายการตัวเลือกใน Dropdown
     local dropdownOptions = {}
     local optionToRarityMap = {}
 
@@ -411,7 +411,7 @@ function GreedyGrowers.Init(Window, WindUI)
         Value = _G.AutoCollectFreeze,
         Callback = function(state)
             _G.AutoCollectFreeze = state
-            if not state me then setStatus("ปิดการเก็บเมื่อคูณนิ่ง") end
+            if not state then setStatus("ปิดการเก็บเมื่อคูณนิ่ง") end
         end,
     })
 
@@ -444,7 +444,7 @@ function GreedyGrowers.Init(Window, WindUI)
         end,
     })
 
-    -- ===== เปลี่ยนจาก Toggles รายอันมาเป็น Multi-Select Dropdown =====
+    -- ===== Multi-Select Dropdown สำหรับเลือก Rarity =====
     GrowersTab:Dropdown({
         Title = "เลือก Rarity เมล็ดที่จะซื้อ",
         Desc = "สามารถเลือกได้หลายรายการพร้อมกัน",
@@ -452,12 +452,10 @@ function GreedyGrowers.Init(Window, WindUI)
         Value = defaultSelected,
         Multi = true,
         Callback = function(selectedValues)
-            -- รีเซ็ตค่าเป็น false ก่อน
             for _, r in ipairs(RARITY_LIST) do
                 _G.AllowedRarities[r] = false
             end
             
-            -- อัปเดตเฉพาะอันที่เลือกใน Dropdown
             if type(selectedValues) == "table" then
                 for _, label in ipairs(selectedValues) do
                     local rarityKey = optionToRarityMap[label]
@@ -634,7 +632,7 @@ function GreedyGrowers.Init(Window, WindUI)
         end
     end)
 
-    print("[Greedy Growers] โหลดเมนูแบบ Dropdown เรียบร้อย")
+    print("[Greedy Growers] โหลดสำเร็จ")
 end
 
 return GreedyGrowers
