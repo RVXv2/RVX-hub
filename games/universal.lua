@@ -14,6 +14,7 @@ local MAP_MODULES = {
     [74102906764176] = "https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/greedygrowers.lua", -- Greedy Growers
     [16732694052] = "https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/fisch.lua", -- Fisch
     [113290951185459] = "https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/animedice.lua", -- Anime Dice
+    [124216119978534] = "https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/rideapet.lua", -- Ride A Pet
 }
 
 do
@@ -253,11 +254,7 @@ if LocalPlayer.Character then
     HookCharacter(LocalPlayer.Character)
 end
 
--- ตรวจจับความเร็วผิดปกติ (แรงกระแทก/ดีดจากของในแมพ) แล้วหักลบทันที
--- และคงสภาพการป้องกัน (Ragdoll/Knockback/นั่ง) ทุกเฟรม แทนที่จะพึ่ง HookCharacter
--- อย่างเดียว (ซึ่งมี delay ทำให้ตายแล้วโดนกระแทกก่อนกันจะกลับมาทำงาน)
--- วิธีนี้การป้องกันจะกลับมาทำงานทันทีไม่ว่าอะไรจะรีเซ็ตสถานะ Humanoid ก็ตาม
-local NORMAL_VELOCITY_LIMIT = 90 -- studs/sec สูงกว่านี้ถือว่าผิดปกติ (บิน/หมุนของเราเองไม่โดนกระทบเพราะไม่ผ่าน AssemblyLinearVelocity แบบนี้)
+local NORMAL_VELOCITY_LIMIT = 90
 local LastGoodVelocity = Vector3.new(0, 0, 0)
 
 game:GetService("RunService").Heartbeat:Connect(function()
@@ -338,7 +335,6 @@ MixTab:Toggle({
     end,
 })
 
--- ===== ส่วนการเคลื่อนไหว (รวมอยู่ในแท็บ มิก) =====
 local RunService = game:GetService("RunService")
 
 MixTab:Section({ Title = "บิน", Desc = "เปิดโหมดบินอิสระ รองรับมือถือ ความสูงคุมด้วยมุมกล้องเสมอ" })
@@ -465,7 +461,6 @@ LocalPlayer.CharacterAdded:Connect(function()
     end
 end)
 
--- ===== หมุนตัวละคร (ใช้แรงหมุนจริง คนอื่นเห็นลื่น ไม่กระตุก) =====
 MixTab:Section({ Title = "หมุนตัวละคร", Desc = "หมุนตัวเองอัตโนมัติต่อเนื่อง คนอื่นเห็นหมุนจริงลื่นๆ" })
 
 local SpinEnabled = false
@@ -605,7 +600,6 @@ LocalPlayer.CharacterAdded:Connect(function()
     PositionLocked = false
 end)
 
--- ===== ความเร็ววิ่ง / กระโดด (ล็อคค่าไว้ตลอด ไม่ถูกรีเซ็ต) =====
 MixTab:Section({ Title = "ความเร็ววิ่ง", Desc = "ปรับ WalkSpeed และล็อคค่าไว้ตลอด แม้ถูกรีเซ็ตหรือตายก็คงเดิม" })
 
 local WalkSpeedValue = 16
@@ -677,8 +671,6 @@ if LocalPlayer.Character then
     if WalkSpeedLocked then ApplyWalkSpeed() end
     if JumpPowerLocked then ApplyJumpPower() end
 end
-
--- ===== ส่วน Anti Lag (รวมอยู่ในแท็บ มิก) =====
 
 MixTab:Section({ Title = "ลดแลค", Desc = "ลบสิ่งของที่ไม่จำเป็นเพื่อเพิ่ม FPS" })
 
