@@ -49,6 +49,7 @@ local LocalPlayer = Players.LocalPlayer
 -- เพิ่ม PlaceId เข้าไปในตารางนี้ได้ถ้าอยากซ่อนแท็บกลางสำหรับแมพอื่นในอนาคต
 local HIDE_UNIVERSAL_TABS_FOR = {
     [113290951185459] = true, -- Anime Dice
+    [124216119978534] = true, -- Ride A Pet
 }
 local hideUniversalTabs = HIDE_UNIVERSAL_TABS_FOR[game.PlaceId] == true
 
