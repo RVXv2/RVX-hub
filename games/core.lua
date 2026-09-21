@@ -4,26 +4,18 @@ local Core = {}
 local HUB_VERSION = "v1.0"
 local CONFIG_FILE = "RVXHub_Config.json"
 
--- ลิงก์ raw ของไฟล์ RVXHub_Scripts.lua (ต้องอัปโหลดไฟล์นั้นขึ้น host เอง
--- เช่น GitHub raw) แล้วแก้ URL ด้านล่างให้ตรงกับที่อัปไว้จริง
 local SCRIPTS_MODULE_URL = "https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/RVXHub_Scripts.lua"
 
--- ===== ข้อความ Changelog (แก้ตรงนี้ที่เดียว ไม่ต้องไปหาในโค้ด) =====
--- Notes แต่ละบรรทัดจะถูกต่อกันด้วยขึ้นบรรทัดใหม่ในหน้าแรก
 local CHANGELOG = {
     Version = "1.0",
     Notes = {
         "- เปิดตัว RVX Hub เวอร์ชันแรก",
         "- เพิ่มแท็บ Scripts สำหรับรันสคริปต์ภายนอก",
-        "- ปรับการเปลี่ยนภาษา/ความโปร่งใสให้บันทึกค่าแล้วแจ้งให้รันสคริปต์ใหม่",
+        "- เปลี่ยนภาษามีผลทันที ไม่ต้องรันสคริปต์ใหม่",
+        "- แยกปุ่มบันทึก/รีเซ็ตการตั้งค่าไปเป็นแท็บของตัวเอง",
     },
 }
 
--- ===== ป้องกันการสร้าง Hub ซ้อนกันหลายอันเวลารันสคริปต์ซ้ำ =====
--- ใช้ getgenv()/_G เก็บ reference ของ instance ก่อนหน้าไว้ (persist ข้ามการรันสคริปต์
--- ในเซสชันเดียวกัน ต่างจากตัวแปร local ที่จะหายไปทุกครั้งที่รันสคริปต์ใหม่)
--- ทุกครั้งที่โหลดสคริปต์นี้ จะเช็คแล้วทำลาย instance เดิมทิ้งก่อนเสมอ
--- เพื่อให้เหลือ Hub อยู่แค่ 1 อันตลอด ไม่ว่าจะกด/รันกี่ครั้งก็ตาม
 local GlobalStore = (type(getgenv) == "function" and getgenv()) or _G
 
 local function RVXHub_Cleanup()
@@ -57,7 +49,6 @@ local function RVXHub_Cleanup()
     GlobalStore.__RVXHub_Instance = nil
 end
 
--- ทำลาย Hub จากการรันครั้งก่อน (ถ้ามี) ก่อนเริ่มสร้างของใหม่
 RVXHub_Cleanup()
 GlobalStore.__RVXHub_Instance = {}
 
@@ -86,24 +77,26 @@ local LANG = {
         autoreconnect = "Auto Reconnect",
         autoreconnectDesc = "เข้าเกมใหม่อัตโนมัติถ้าหลุดเซิร์ฟเวอร์",
         language = "ภาษา",
-        languageDesc = "มีผลกับหน้าแรกและการตั้งค่าหลังรันสคริปต์ใหม่",
+        languageDesc = "เปลี่ยนแล้วมีผลทันที ไม่ต้องรันสคริปต์ใหม่",
         appearance = "รูปลักษณ์",
         appearanceDesc = "ปรับความโปร่งใสของหน้าต่าง Hub (มีผลหลังรันสคริปต์ใหม่)",
         transparency = "หน้าต่างโปร่งใส",
         transparencySaved = "บันทึกแล้ว รันสคริปต์ใหม่เพื่อให้มีผล",
-        languageSaved = "บันทึกภาษาแล้ว รันสคริปต์ใหม่เพื่อให้มีผล",
+        languageSaved = "เปลี่ยนภาษาเรียบร้อยแล้ว",
         keybindSection = "ปุ่มลัด",
         keybindDesc = "เลือกปุ่มสำหรับปิด Hub อย่างเร็ว",
         quickCloseKey = "ปุ่มปิดด่วน",
         stats = "แสดงสถิติ",
         statsDesc = "โชว์กรอบ FPS/Ping มุมจอ",
         showStats = "แสดง FPS/Ping",
+        savedSettings = "บันทึกการตั้งค่า",
+        savedSettingsDesc = "บันทึก/รีเซ็ตการตั้งค่าทั้งหมด ใช้ได้ทุกแมพ",
         configSection = "การตั้งค่าที่บันทึกไว้",
         configDesc = "บันทึก/รีเซ็ตการตั้งค่าทั้งหมด",
         saveConfig = "บันทึกการตั้งค่า",
         savedMsg = "บันทึกการตั้งค่าแล้ว",
         resetConfig = "รีเซ็ตการตั้งค่าทั้งหมด",
-        resetMsg = "รีเซ็ตเรียบร้อยแล้ว เข้าเกมใหม่เพื่อให้มีผลเต็มที่",
+        resetMsg = "รีเซ็ตเรียบร้อยแล้ว (มีผลทันที)",
         closehub = "ปิด Hub",
         transparencyUnsupported = "WindUI เวอร์ชันนี้ยังไม่รองรับการปรับความโปร่งใส",
         scripts = "สคริปต์",
@@ -135,24 +128,26 @@ local LANG = {
         autoreconnect = "Auto Reconnect",
         autoreconnectDesc = "Auto rejoin if you get disconnected",
         language = "Language",
-        languageDesc = "Affects Home and Settings tabs after you rerun the script",
+        languageDesc = "Applies instantly, no need to rerun the script",
         appearance = "Appearance",
         appearanceDesc = "Adjust the Hub window transparency (applies after you rerun the script)",
         transparency = "Transparent window",
         transparencySaved = "Saved. Rerun the script for it to take effect.",
-        languageSaved = "Language saved. Rerun the script for it to take effect.",
+        languageSaved = "Language changed successfully",
         keybindSection = "Keybind",
         keybindDesc = "Choose a key to quickly close the Hub",
         quickCloseKey = "Quick close key",
         stats = "Show Stats",
         statsDesc = "Show an FPS/Ping overlay on screen",
         showStats = "Show FPS/Ping",
+        savedSettings = "Saved Settings",
+        savedSettingsDesc = "Save/reset all settings, works on every map",
         configSection = "Saved Settings",
         configDesc = "Save/reset all settings",
         saveConfig = "Save Settings",
         savedMsg = "Settings saved",
         resetConfig = "Reset All Settings",
-        resetMsg = "Reset done. Rejoin for full effect.",
+        resetMsg = "Reset done (applies instantly)",
         closehub = "Close Hub",
         transparencyUnsupported = "This WindUI version does not support transparency yet",
         scripts = "Scripts",
@@ -201,6 +196,27 @@ end
 Core.Config = LoadConfig()
 Core.MapName = nil
 
+-- ===== ระบบเปลี่ยนภาษาแบบมีผลทันที (ไม่ทำลาย/สร้างหน้าต่างใหม่) =====
+-- แทนที่จะ Destroy+CreateWindow ใหม่ (วิธีเดิมที่เคยลองแล้วพังบ่อย เพราะ yield
+-- ข้าม callback boundary) เราเก็บ "ฟังก์ชัน refresh" ของแต่ละ element ไว้แทน
+-- พอเปลี่ยนภาษา จะไล่เรียกทุกฟังก์ชันเพื่ออัปเดตข้อความ Title/Desc ของ element
+-- นั้นๆ ตรงๆ ผ่าน :SetTitle()/:SetDesc() ถ้า WindUI เวอร์ชันที่ใช้ไม่รองรับ
+-- method พวกนี้ จะแค่ข้ามไปเงียบๆ (ครอบ pcall ไว้) ไม่ทำให้ทั้งหน้าพัง
+Core.LanguageRefreshers = {}
+
+-- โมดูลแมพอื่น (เช่น rideapet.lua) เรียกอันนี้เพื่อลงทะเบียนขอรับการอัปเดต
+-- ภาษาแบบเรียลไทม์ได้เหมือนกัน ไม่ต้องจำกัดแค่ core.lua เอง
+function Core.RegisterLanguageRefresh(fn)
+    table.insert(Core.LanguageRefreshers, fn)
+end
+
+local function RefreshAllLanguage()
+    local T = LANG[Core.Config.Language] or LANG.TH
+    for _, fn in ipairs(Core.LanguageRefreshers) do
+        pcall(fn, T, Core.Config.Language)
+    end
+end
+
 function Core.Init(mapName)
     Core.MapName = mapName
     local T = LANG[Core.Config.Language] or LANG.TH
@@ -208,17 +224,15 @@ function Core.Init(mapName)
     local Window = WindUI:CreateWindow({
         Title = "RVX hub X " .. mapName,
         Icon = "rbxassetid://95844711546407",
-        IconSize = 32, -- ค่า default เล็กมองไม่ค่อยชัด ปรับให้ใหญ่ขึ้น (ลอง 40-44 ได้ถ้ายังเล็กไป)
+        IconSize = 32,
         Theme = Core.Config.Theme,
         Transparent = Core.Config.Transparent,
-        -- ปุ่มลอย (โผล่ตอนซ่อน Hub ไว้) กดแล้วเปิด Hub กลับมา
-        -- ปรับข้อความ/สีตรงนี้ได้เลย ไม่กระทบส่วนอื่น
         OpenButton = {
             Title = "RVX Hub",
-            CornerRadius = UDim.new(0, 12), -- มนพอดี ไม่กลมจนเป็นแคปซูล (ปรับตัวเลขได้ ยิ่งมากยิ่งมน)
+            CornerRadius = UDim.new(0, 12),
             Color = ColorSequence.new(
-                Color3.fromHex("#6D28D9"), -- ม่วง
-                Color3.fromHex("#3B82F6")  -- น้ำเงิน
+                Color3.fromHex("#6D28D9"),
+                Color3.fromHex("#3B82F6")
             ),
         },
     })
@@ -230,13 +244,15 @@ function Core.Init(mapName)
     local LocalPlayer = Players.LocalPlayer
 
     local HomeTab = Window:Tab({ Title = T.home, Icon = "house" })
+    Core.RegisterLanguageRefresh(function(T2)
+        pcall(function() HomeTab:SetTitle(T2.home) end)
+    end)
 
-    HomeTab:Section({ Title = T.profileSection, Desc = mapName })
+    local profileSection = HomeTab:Section({ Title = T.profileSection, Desc = mapName })
+    Core.RegisterLanguageRefresh(function(T2)
+        pcall(function() profileSection:SetTitle(T2.profileSection) end)
+    end)
 
-    -- หมายเหตุ: WindUI ไม่มี method "Section:Image()" จริง (เช็คจาก docs แล้ว
-    -- ไม่มี element ชื่อ Image เลย) เดิมเรียก ProfileSection:Image({...}) จึงไม่ทำ
-    -- อะไรเลย รูปโปรไฟล์เลยไม่ขึ้น วิธีที่ถูกต้องคือใช้ Paragraph ที่มี field
-    -- Thumbnail/ThumbnailSize ในตัว (ดู docs: footagesus.github.io/WindUI-Docs/docs/paragraph)
     local thumbOk, thumbContent = pcall(function()
         return Players:GetUserThumbnailAsync(
             LocalPlayer.UserId,
@@ -252,45 +268,57 @@ function Core.Init(mapName)
         ThumbnailSize = 60,
     })
 
-    HomeTab:Button({
+    local versionBtn = HomeTab:Button({
         Title = T.version .. HUB_VERSION,
         Icon = "star",
         Callback = function()
+            local curT = LANG[Core.Config.Language] or LANG.TH
             WindUI:Notify({
                 Title = "RVX Hub",
-                Content = T.version .. HUB_VERSION,
+                Content = curT.version .. HUB_VERSION,
                 Duration = 3,
             })
         end,
     })
+    Core.RegisterLanguageRefresh(function(T2)
+        pcall(function() versionBtn:SetTitle(T2.version .. HUB_VERSION) end)
+    end)
 
-    -- ===== ประกาศอัปเดต (Changelog) =====
-    -- แก้ข้อความได้ที่ CHANGELOG ตัวแปรเดียว ด้านบนไฟล์ ไม่ต้องมาแก้ตรงนี้อีก
-    HomeTab:Section({ Title = T.changelogSection, Desc = T.changelogSectionDesc })
+    local changelogSection = HomeTab:Section({ Title = T.changelogSection, Desc = T.changelogSectionDesc })
+    Core.RegisterLanguageRefresh(function(T2)
+        pcall(function()
+            changelogSection:SetTitle(T2.changelogSection)
+            changelogSection:SetDesc(T2.changelogSectionDesc)
+        end)
+    end)
 
-    HomeTab:Paragraph({
+    local changelogParagraph = HomeTab:Paragraph({
         Title = T.changelogTitlePrefix .. CHANGELOG.Version,
         Desc = table.concat(CHANGELOG.Notes, "\n"),
     })
+    Core.RegisterLanguageRefresh(function(T2)
+        pcall(function() changelogParagraph:SetTitle(T2.changelogTitlePrefix .. CHANGELOG.Version) end)
+    end)
 
-    HomeTab:Button({
+    local discordBtn = HomeTab:Button({
         Title = T.discord,
         Icon = "message-circle",
         Callback = function()
+            local curT = LANG[Core.Config.Language] or LANG.TH
             if setclipboard then
                 setclipboard("https://discord.gg/WQePykh3yJ")
             end
             WindUI:Notify({
-                Title = T.discordCopied,
-                Content = T.discordDesc,
+                Title = curT.discordCopied,
+                Content = curT.discordDesc,
                 Duration = 3,
             })
         end,
     })
+    Core.RegisterLanguageRefresh(function(T2)
+        pcall(function() discordBtn:SetTitle(T2.discord) end)
+    end)
 
-    -- ===== ปุ่มลัดซ่อน/เปิด Hub =====
-    -- เดิมใช้ Window:Destroy() ซึ่ง "ทำลาย" หน้าต่างถาวร กดแล้วเรียกกลับมาไม่ได้
-    -- เปลี่ยนเป็น Toggle เพื่อให้กดปุ่มเดิมซ้ำแล้วเปิด Hub กลับมาได้เอง
     local UserInputService = game:GetService("UserInputService")
     local inputConnection
     inputConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
@@ -304,7 +332,6 @@ function Core.Init(mapName)
                     toggled = true
                 end)
                 if not toggled then
-                    -- เผื่อ WindUI เวอร์ชันที่ใช้ไม่มี :Toggle() ให้ลอง Open/Close แยก
                     pcall(function()
                         if Window.Visible then
                             Window:Close()
@@ -327,11 +354,20 @@ function Core.Settings(Window, WindUI)
     local Players = game:GetService("Players")
 
     local SettingsTab = Window:Tab({ Title = T.settings, Icon = "settings" })
+    Core.RegisterLanguageRefresh(function(T2)
+        pcall(function() SettingsTab:SetTitle(T2.settings) end)
+    end)
 
     -- ===== ทั่วไป =====
-    SettingsTab:Section({ Title = T.general, Desc = T.generalDesc })
+    local generalSection = SettingsTab:Section({ Title = T.general, Desc = T.generalDesc })
+    Core.RegisterLanguageRefresh(function(T2)
+        pcall(function()
+            generalSection:SetTitle(T2.general)
+            generalSection:SetDesc(T2.generalDesc)
+        end)
+    end)
 
-    SettingsTab:Dropdown({
+    local themeDropdown = SettingsTab:Dropdown({
         Title = T.theme,
         Values = { "Dark", "Light", "Emerald", "Plant", "Midnight", "Violet", "Rose", "MonokaiPro" },
         Value = Core.Config.Theme,
@@ -340,29 +376,42 @@ function Core.Settings(Window, WindUI)
             WindUI:SetTheme(selected)
         end,
     })
+    Core.RegisterLanguageRefresh(function(T2)
+        pcall(function() themeDropdown:SetTitle(T2.theme) end)
+    end)
 
     -- ===== การเชื่อมต่อ =====
-    SettingsTab:Section({ Title = T.connection, Desc = T.connectionDesc })
+    local connectionSection = SettingsTab:Section({ Title = T.connection, Desc = T.connectionDesc })
+    Core.RegisterLanguageRefresh(function(T2)
+        pcall(function()
+            connectionSection:SetTitle(T2.connection)
+            connectionSection:SetDesc(T2.connectionDesc)
+        end)
+    end)
 
     local TeleportService = game:GetService("TeleportService")
 
-    SettingsTab:Toggle({
+    local autoReconnectToggle = SettingsTab:Toggle({
         Title = T.autoreconnect,
         Desc = T.autoreconnectDesc,
         Value = Core.Config.AutoReconnect,
         Callback = function(state)
             Core.Config.AutoReconnect = state
+            local curT = LANG[Core.Config.Language] or LANG.TH
             WindUI:Notify({
-                Title = T.settings,
-                Content = T.autoreconnect .. ": " .. (state and "ON" or "OFF"),
+                Title = curT.settings,
+                Content = curT.autoreconnect .. ": " .. (state and "ON" or "OFF"),
                 Duration = 2,
             })
         end,
     })
+    Core.RegisterLanguageRefresh(function(T2)
+        pcall(function()
+            autoReconnectToggle:SetTitle(T2.autoreconnect)
+            autoReconnectToggle:SetDesc(T2.autoreconnectDesc)
+        end)
+    end)
 
-    -- BindToClose ทำงานไม่ได้ในบาง executor และจะ error จนโค้ดที่เหลือ
-    -- (ภาษา / ความโปร่งใส / ปุ่มลัด / สถิติ / บันทึก-รีเซ็ต) ไม่ถูกสร้างเลย
-    -- ครอบ pcall กันไว้ไม่ให้ error ตรงนี้ทำให้ UI ส่วนที่เหลือหายไป
     pcall(function()
         game:BindToClose(function()
             if Core.Config.AutoReconnect then
@@ -373,13 +422,16 @@ function Core.Settings(Window, WindUI)
         end)
     end)
 
-    -- ===== ภาษา =====
-    -- หมายเหตุ: ตัด Core.Rebuild ออกแล้ว (เดิมพัง/หายบ่อยเพราะ yield ข้าม
-    -- callback boundary ตอน Destroy+CreateWindow ใหม่ทันที) ตอนนี้แค่บันทึกค่า
-    -- ลงไฟล์แล้วแจ้งเตือนให้รันสคริปต์ใหม่เพื่อให้มีผล เหมือนปุ่ม "รีเซ็ต"
-    SettingsTab:Section({ Title = T.language, Desc = T.languageDesc })
+    -- ===== ภาษา (เปลี่ยนแล้วมีผลทันที) =====
+    local languageSection = SettingsTab:Section({ Title = T.language, Desc = T.languageDesc })
+    Core.RegisterLanguageRefresh(function(T2)
+        pcall(function()
+            languageSection:SetTitle(T2.language)
+            languageSection:SetDesc(T2.languageDesc)
+        end)
+    end)
 
-    SettingsTab:Dropdown({
+    local languageDropdown = SettingsTab:Dropdown({
         Title = T.language,
         Values = { "TH", "EN" },
         Value = Core.Config.Language,
@@ -387,32 +439,48 @@ function Core.Settings(Window, WindUI)
             if selected == Core.Config.Language then return end
             Core.Config.Language = selected
             SaveConfigToFile(Core.Config)
-            WindUI:Notify({ Title = T.settings, Content = T.languageSaved, Duration = 4 })
+            RefreshAllLanguage() -- อัปเดตข้อความทุกจุดทันที ไม่ต้องรันสคริปต์ใหม่
+            local curT = LANG[Core.Config.Language] or LANG.TH
+            WindUI:Notify({ Title = curT.settings, Content = curT.languageSaved, Duration = 3 })
         end,
     })
+    Core.RegisterLanguageRefresh(function(T2)
+        pcall(function() languageDropdown:SetTitle(T2.language) end)
+    end)
 
     -- ===== รูปลักษณ์ (ความโปร่งใส) =====
-    -- หมายเหตุ: WindUI ไม่มีฟังก์ชันปรับความโปร่งใสระหว่างใช้งานจริง (ไม่มี
-    -- Window:SetTransparency() ให้เรียก) ค่า Transparent เป็นได้แค่ true/false
-    -- และตั้งได้เฉพาะตอนสร้างหน้าต่างผ่าน WindUI:CreateWindow เท่านั้น จึงแค่
-    -- บันทึกค่าไว้แล้วแจ้งให้รันสคริปต์ใหม่เพื่อให้มีผล ไม่มีการ Destroy+สร้างใหม่
-    -- อัตโนมัติอีกต่อไป
-    SettingsTab:Section({ Title = T.appearance, Desc = T.appearanceDesc })
+    local appearanceSection = SettingsTab:Section({ Title = T.appearance, Desc = T.appearanceDesc })
+    Core.RegisterLanguageRefresh(function(T2)
+        pcall(function()
+            appearanceSection:SetTitle(T2.appearance)
+            appearanceSection:SetDesc(T2.appearanceDesc)
+        end)
+    end)
 
-    SettingsTab:Toggle({
+    local transparencyToggle = SettingsTab:Toggle({
         Title = T.transparency,
         Value = Core.Config.Transparent,
         Callback = function(state)
             Core.Config.Transparent = state
             SaveConfigToFile(Core.Config)
-            WindUI:Notify({ Title = T.settings, Content = T.transparencySaved, Duration = 4 })
+            local curT = LANG[Core.Config.Language] or LANG.TH
+            WindUI:Notify({ Title = curT.settings, Content = curT.transparencySaved, Duration = 4 })
         end,
     })
+    Core.RegisterLanguageRefresh(function(T2)
+        pcall(function() transparencyToggle:SetTitle(T2.transparency) end)
+    end)
 
     -- ===== ปุ่มลัด =====
-    SettingsTab:Section({ Title = T.keybindSection, Desc = T.keybindDesc })
+    local keybindSection = SettingsTab:Section({ Title = T.keybindSection, Desc = T.keybindDesc })
+    Core.RegisterLanguageRefresh(function(T2)
+        pcall(function()
+            keybindSection:SetTitle(T2.keybindSection)
+            keybindSection:SetDesc(T2.keybindDesc)
+        end)
+    end)
 
-    SettingsTab:Dropdown({
+    local keybindDropdown = SettingsTab:Dropdown({
         Title = T.quickCloseKey,
         Values = { "K", "L", "J", "Insert", "End", "RightShift", "F4" },
         Value = Core.Config.QuickCloseKey,
@@ -420,9 +488,18 @@ function Core.Settings(Window, WindUI)
             Core.Config.QuickCloseKey = selected
         end,
     })
+    Core.RegisterLanguageRefresh(function(T2)
+        pcall(function() keybindDropdown:SetTitle(T2.quickCloseKey) end)
+    end)
 
     -- ===== สถิติ FPS/Ping =====
-    SettingsTab:Section({ Title = T.stats, Desc = T.statsDesc })
+    local statsSection = SettingsTab:Section({ Title = T.stats, Desc = T.statsDesc })
+    Core.RegisterLanguageRefresh(function(T2)
+        pcall(function()
+            statsSection:SetTitle(T2.stats)
+            statsSection:SetDesc(T2.statsDesc)
+        end)
+    end)
 
     local StatsGui = nil
     local StatsConnection = nil
@@ -501,7 +578,7 @@ function Core.Settings(Window, WindUI)
         end
     end
 
-    SettingsTab:Toggle({
+    local statsToggle = SettingsTab:Toggle({
         Title = T.showStats,
         Value = false,
         Callback = function(state)
@@ -512,20 +589,49 @@ function Core.Settings(Window, WindUI)
             end
         end,
     })
+    Core.RegisterLanguageRefresh(function(T2)
+        pcall(function() statsToggle:SetTitle(T2.showStats) end)
+    end)
 
-    -- ===== บันทึก/รีเซ็ต =====
-    SettingsTab:Section({ Title = T.configSection, Desc = T.configDesc })
+    -- หมายเหตุ: ปุ่มบันทึก/รีเซ็ต/ปิด Hub ย้ายไปแท็บ "บันทึกการตั้งค่า" แยกต่างหากแล้ว
+    -- (ดูฟังก์ชัน Core.SavedSettingsTab ด้านล่าง) ไม่ได้อยู่ในแท็บนี้อีกต่อไป
+end
 
-    SettingsTab:Button({
+-- ===== แท็บ "บันทึกการตั้งค่า" แยกต่างหาก (โชว์ทุกแมพเหมือน Settings) =====
+-- ก่อนหน้านี้ปุ่มพวกนี้อยู่ท้ายแท็บ Settings รวมกับอย่างอื่น ย้ายมาไว้ที่นี่
+-- ให้เป็นแท็บของตัวเอง หาง่ายขึ้น และเรียกจาก universal.lua แบบเดียวกับ
+-- Core.Settings(Window, WindUI) คือเรียกนอก if hideUniversalTabs เพื่อให้ขึ้น
+-- ทุกแมพเสมอ
+function Core.SavedSettingsTab(Window, WindUI)
+    local T = LANG[Core.Config.Language] or LANG.TH
+
+    local SavedTab = Window:Tab({ Title = T.savedSettings, Icon = "save" })
+    Core.RegisterLanguageRefresh(function(T2)
+        pcall(function() SavedTab:SetTitle(T2.savedSettings) end)
+    end)
+
+    local savedSection = SavedTab:Section({ Title = T.configSection, Desc = T.savedSettingsDesc })
+    Core.RegisterLanguageRefresh(function(T2)
+        pcall(function()
+            savedSection:SetTitle(T2.configSection)
+            savedSection:SetDesc(T2.savedSettingsDesc)
+        end)
+    end)
+
+    local saveBtn = SavedTab:Button({
         Title = T.saveConfig,
         Icon = "save",
         Callback = function()
             SaveConfigToFile(Core.Config)
-            WindUI:Notify({ Title = T.settings, Content = T.savedMsg, Duration = 2 })
+            local curT = LANG[Core.Config.Language] or LANG.TH
+            WindUI:Notify({ Title = curT.settings, Content = curT.savedMsg, Duration = 2 })
         end,
     })
+    Core.RegisterLanguageRefresh(function(T2)
+        pcall(function() saveBtn:SetTitle(T2.saveConfig) end)
+    end)
 
-    SettingsTab:Button({
+    local resetBtn = SavedTab:Button({
         Title = T.resetConfig,
         Icon = "rotate-ccw",
         Callback = function()
@@ -536,25 +642,36 @@ function Core.Settings(Window, WindUI)
             Core.Config = fresh
             SaveConfigToFile(Core.Config)
             WindUI:SetTheme(Core.Config.Theme)
-            WindUI:Notify({ Title = T.settings, Content = T.resetMsg, Duration = 4 })
+            RefreshAllLanguage() -- รีเซ็ตภาษากลับ TH แล้วให้มีผลทันทีด้วยเหมือนกัน
+            local curT = LANG[Core.Config.Language] or LANG.TH
+            WindUI:Notify({ Title = curT.settings, Content = curT.resetMsg, Duration = 4 })
         end,
     })
+    Core.RegisterLanguageRefresh(function(T2)
+        pcall(function() resetBtn:SetTitle(T2.resetConfig) end)
+    end)
 
-    SettingsTab:Button({
+    local closeBtn = SavedTab:Button({
         Title = T.closehub,
         Icon = "x",
         Callback = function()
-            DestroyStatsOverlay()
+            local GlobalStoreRef = (type(getgenv) == "function" and getgenv()) or _G
+            pcall(function()
+                if GlobalStoreRef.__RVXHub_Instance and GlobalStoreRef.__RVXHub_Instance.StatsConnection then
+                    GlobalStoreRef.__RVXHub_Instance.StatsConnection:Disconnect()
+                end
+                if GlobalStoreRef.__RVXHub_Instance and GlobalStoreRef.__RVXHub_Instance.StatsGui then
+                    GlobalStoreRef.__RVXHub_Instance.StatsGui:Destroy()
+                end
+            end)
             RVXHub_Cleanup()
         end,
     })
+    Core.RegisterLanguageRefresh(function(T2)
+        pcall(function() closeBtn:SetTitle(T2.closehub) end)
+    end)
 end
 
--- ===== แท็บ Scripts (โหลดจากไฟล์แยก RVXHub_Scripts.lua) =====
--- แยกไฟล์ออกมาเพื่อให้แก้/เพิ่มรายการสคริปต์ได้โดยไม่ต้องยุ่งกับ Core หลัก
--- โหลดผ่าน HttpGet + loadstring เหมือนกับที่ไฟล์นี้โหลด WindUI ตอนต้น
--- ครอบ pcall ไว้ทั้งขั้นตอนโหลดไฟล์และตอนเรียก Init เพื่อไม่ให้ error ตรงนี้
--- ทำให้แท็บอื่นๆ ที่สร้างไปแล้ว (Home/Settings) หายไปด้วย
 function Core.Scripts(Window, WindUI)
     local T = LANG[Core.Config.Language] or LANG.TH
 
