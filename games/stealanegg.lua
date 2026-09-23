@@ -5120,6 +5120,38 @@ local function oM(...)
         end,
     })
 
+    -- WindUI Multi Dropdown can return either:
+    --   { ["Zone Name"] = true, ... }
+    -- or { "Zone Name", "Another Zone", ... }.
+    -- The farm selector expects the persistent map form, so normalize both.
+    local function normalizeMultiSelection(values, allowedValues)
+        local result = {}
+        if type(values) ~= "table" then
+            return result
+        end
+
+        local allowed = {}
+        for _, name in ipairs(allowedValues or {}) do
+            allowed[name] = true
+        end
+
+        for key, value in pairs(values) do
+            if type(key) == "number" then
+                -- Array form: { "Forest", "Lake" }
+                if type(value) == "string" and allowed[value] then
+                    result[value] = true
+                end
+            elseif type(key) == "string" then
+                -- Map form: { Forest = true, Lake = true }
+                if value == true and allowed[key] then
+                    result[key] = true
+                end
+            end
+        end
+
+        return result
+    end
+
     local zoneValues = {}
     local zoneDefault = {}
     for _, name in ipairs(M or {}) do
@@ -5136,15 +5168,7 @@ local function oM(...)
         Multi = true,
         AllowNone = true,
         Callback = function(values)
-            local nextSelected = {}
-            if type(values) == "table" then
-                for name, selected in pairs(values) do
-                    if selected then
-                        nextSelected[name] = true
-                    end
-                end
-            end
-            h.selectedZones = nextSelected
+            h.selectedZones = normalizeMultiSelection(values, zoneValues)
             pcall(x)
         end,
     })
@@ -5165,15 +5189,7 @@ local function oM(...)
         Multi = true,
         AllowNone = true,
         Callback = function(values)
-            local nextSelected = {}
-            if type(values) == "table" then
-                for name, selected in pairs(values) do
-                    if selected then
-                        nextSelected[name] = true
-                    end
-                end
-            end
-            h.selectedRarities = nextSelected
+            h.selectedRarities = normalizeMultiSelection(values, rarityValues)
             pcall(x)
         end,
     })
