@@ -67,6 +67,18 @@ function Module.Init(Window, WindUI)
         end
     end
 
+    -- Farm statistics state
+    local StatsGui
+    local StatsFrame
+    local StatsRuntime
+    local StatsRate
+    local StatsStatus
+    local StatsClose
+    local StatsStartTime = 0
+    local StatsStartGold = nil
+    local StatsLastGold = nil
+    local StatsGoldPerHour = 0
+
     local function cleanup()
         if not alive then return end
         alive = false
@@ -89,38 +101,45 @@ function Module.Init(Window, WindUI)
 
     -- Floating iPhone-style farm statistics panel.
     -- It is shown only while Auto Farm is enabled and does not replace the RVX UI.
-    local StatsGui
-    local StatsFrame
-    local StatsRuntime
-    local StatsRate
-    local StatsStatus
-    local StatsClose
-    local StatsStartTime = 0
-    local StatsStartGold = nil
-    local StatsLastGold = nil
-    local StatsLastCheck = 0
-    local StatsGoldPerHour = 0
+    local GOLD_NAMES = {
+        gold = true,
+        coins = true,
+        coin = true,
+        money = true,
+        cash = true,
+        treasure = true,
+    }
 
     local function findGoldValue()
-        local containers = {
+        -- BABFT normally exposes currency in player-side values/leaderstats.
+        -- Search the whole LocalPlayer tree so nested value folders are also detected.
+        local preferred = {
             LP:FindFirstChild("leaderstats"),
-            LP:FindFirstChild("leaderstats", true),
             LP:FindFirstChild("Data"),
             LP:FindFirstChild("Stats"),
             LP:FindFirstChild("PlayerData"),
         }
-        for _, container in ipairs(containers) do
+
+        for _, container in ipairs(preferred) do
             if container then
+                local direct = container:FindFirstChild("Gold")
+                if direct and (direct:IsA("IntValue") or direct:IsA("NumberValue")) then
+                    return direct
+                end
                 for _, obj in ipairs(container:GetDescendants()) do
-                    if obj:IsA("IntValue") or obj:IsA("NumberValue") then
-                        local n = string.lower(obj.Name)
-                        if n == "gold" or n == "coins" or n == "coin" or n == "money" or n == "cash" or n == "treasure" then
-                            return obj
-                        end
+                    if (obj:IsA("IntValue") or obj:IsA("NumberValue")) and GOLD_NAMES[string.lower(obj.Name)] then
+                        return obj
                     end
                 end
             end
         end
+
+        for _, obj in ipairs(LP:GetDescendants()) do
+            if (obj:IsA("IntValue") or obj:IsA("NumberValue")) and GOLD_NAMES[string.lower(obj.Name)] then
+                return obj
+            end
+        end
+
         return nil
     end
 
@@ -150,15 +169,22 @@ function Module.Init(Window, WindUI)
         StatsGui.ResetOnSpawn = false
         StatsGui.IgnoreGuiInset = true
         StatsGui.DisplayOrder = 999
-        pcall(function() StatsGui.Parent = CoreGui end)
+        local parentGui
+        pcall(function()
+            if typeof(gethui) == "function" then
+                parentGui = gethui()
+            end
+        end)
+        parentGui = parentGui or CoreGui
+        pcall(function() StatsGui.Parent = parentGui end)
         if not StatsGui.Parent then
             StatsGui.Parent = LP:WaitForChild("PlayerGui")
         end
 
         StatsFrame = Instance.new("Frame")
         StatsFrame.Name = "StatsCard"
-        StatsFrame.Size = UDim2.fromOffset(235, 118)
-        StatsFrame.Position = UDim2.new(1, -255, 0, 82)
+        StatsFrame.Size = UDim2.fromOffset(255, 132)
+        StatsFrame.Position = UDim2.new(1, -275, 0, 82)
         StatsFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
         StatsFrame.BackgroundTransparency = 0.08
         StatsFrame.BorderSizePixel = 0
@@ -217,8 +243,8 @@ function Module.Init(Window, WindUI)
         end
 
         StatsRate = makeLabel(39, "Gold / Hour     --")
-        StatsRuntime = makeLabel(64, "Runtime             00:00:00")
-        StatsStatus = makeLabel(89, "Status               Waiting...")
+        StatsRuntime = makeLabel(66, "Runtime             00:00:00")
+        StatsStatus = makeLabel(93, "Status               Waiting...")
         StatsStatus.TextColor3 = Color3.fromRGB(155, 155, 165)
     end
 
@@ -227,8 +253,17 @@ function Module.Init(Window, WindUI)
         StatsStartTime = os.clock()
         StatsStartGold = value and tonumber(value.Value) or nil
         StatsLastGold = StatsStartGold
-        StatsLastCheck = os.clock()
         StatsGoldPerHour = 0
+
+        if StatsRate then
+            StatsRate.Text = StatsStartGold and "Gold / Hour     0" or "Gold / Hour     detecting..."
+        end
+        if StatsRuntime then
+            StatsRuntime.Text = "Runtime             00:00:00"
+        end
+        if StatsStatus then
+            StatsStatus.Text = StatsStartGold and "Status               Farming..." or "Status               Finding Gold..."
+        end
     end
 
     local function showStats()
@@ -244,25 +279,36 @@ function Module.Init(Window, WindUI)
     task.spawn(function()
         while alive do
             task.wait(1)
-            if not alive or not StatsGui or not StatsFrame then continue end
-            if not Config.AutoFarm then continue end
+            if not alive or not StatsGui or not StatsFrame or not Config.AutoFarm then
+                continue
+            end
+
             pcall(function()
                 local now = os.clock()
                 local elapsed = math.max(1, now - StatsStartTime)
                 local value = findGoldValue()
                 local currentGold = value and tonumber(value.Value) or nil
 
+                -- If Gold was not available when the farm started, keep trying until it appears.
+                if not StatsStartGold and currentGold then
+                    StatsStartGold = currentGold
+                    StatsLastGold = currentGold
+                    StatsStartTime = now
+                    elapsed = 1
+                end
+
                 if currentGold and StatsStartGold then
                     local gained = math.max(0, currentGold - StatsStartGold)
                     StatsGoldPerHour = gained * 3600 / elapsed
                     StatsLastGold = currentGold
                     StatsRate.Text = "Gold / Hour     " .. formatNumber(StatsGoldPerHour)
+                    StatsStatus.Text = "Status               Farming..."
                 else
-                    StatsRate.Text = "Gold / Hour     --"
+                    StatsRate.Text = "Gold / Hour     detecting..."
+                    StatsStatus.Text = "Status               Gold not found"
                 end
 
                 StatsRuntime.Text = "Runtime             " .. formatTime(elapsed)
-                StatsStatus.Text = "Status               Farming..."
             end)
         end
     end)
