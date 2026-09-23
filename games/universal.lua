@@ -15,6 +15,7 @@ local MAP_MODULES = {
     [16732694052] = "https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/fisch.lua", -- Fisch
     [113290951185459] = "https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/animedice.lua", -- Anime Dice
     [124216119978534] = "https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/rideapet.lua", -- Ride A Pet
+    [107778070777162] = "https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/stealanegg.lua", -- Steal An Egg
 }
 
 do
@@ -50,6 +51,7 @@ local LocalPlayer = Players.LocalPlayer
 local HIDE_UNIVERSAL_TABS_FOR = {
     [113290951185459] = true, -- Anime Dice
     [124216119978534] = true, -- Ride A Pet
+    [107778070777162] = true, -- Steal An Egg
 }
 local hideUniversalTabs = HIDE_UNIVERSAL_TABS_FOR[game.PlaceId] == true
 
