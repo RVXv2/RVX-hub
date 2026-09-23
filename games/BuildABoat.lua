@@ -313,32 +313,15 @@ function Module.Init(Window, WindUI)
         end
     end)
 
-    -- Layout: ใช้เฉพาะแท็บของแมพ 2 แท็บ ส่วน Settings ใช้ของ RVX Hub เพียงอันเดียว
-    local MainTab = Window:Tab({ Title = "หน้าหลัก", Icon = "home" })
-    local FarmTab = Window:Tab({ Title = "ฟาร์ม", Icon = "coins" })
+    -- Layout: ใช้แท็บเดียวของแมพ ส่วน Settings ใช้ของ RVX Hub เพียงอันเดียว
+    local BuildTab = Window:Tab({ Title = "Build A Boat", Icon = "ship" })
 
-    MainTab:Section({ Title = "Build A Boat For Treasure" })
-    MainTab:Paragraph({
-        Title = "BABFT",
-        Desc = "Gold Farm • 2.3s Delay • Precise Stage Farm",
-        Image = "ship",
-        ImageSize = 20,
-    })
+    BuildTab:Section({ Title = "Farm" })
 
-    MainTab:Section({ Title = "ฟังก์ชันที่มี" })
-    MainTab:Paragraph({
+    BuildTab:Toggle({
         Title = "Auto Farm Gold",
-        Desc = "วาร์ปผ่านด่านตามลำดับ 1-10 หน่วงด่านละ 2.3 วินาที แล้วไปจุดสมบัติ",
-    })
-    MainTab:Paragraph({
-        Title = "Auto Claim",
-        Desc = "ตรวจจับปุ่ม Claim/เรียกร้องใน PlayerGui และกดอัตโนมัติ",
-    })
-
-    FarmTab:Section({ Title = "ระบบฟาร์มทองอัตโนมัติ" })
-    FarmTab:Toggle({
-        Title = "Auto Farm Gold",
-        Desc = "ยืนด่านละ 2.3 วินาทีและผ่านด่านตามลำดับ",
+        Icon = "coins",
+        Desc = "ฟาร์มทองผ่าน CaveStage 1-10 อัตโนมัติ",
         Value = Config.AutoFarm == true,
         Callback = function(value)
             Config.AutoFarm = value == true
@@ -352,9 +335,10 @@ function Module.Init(Window, WindUI)
         end,
     })
 
-    FarmTab:Toggle({
+    BuildTab:Toggle({
         Title = "Auto Claim",
-        Desc = "กดรับทอง/Claim อัตโนมัติเมื่อปุ่มปรากฏ",
+        Icon = "hand-coins",
+        Desc = "กด Claim อัตโนมัติเมื่อปุ่มปรากฏ",
         Value = Config.AutoClaim ~= false,
         Callback = function(value)
             Config.AutoClaim = value == true
@@ -362,21 +346,12 @@ function Module.Init(Window, WindUI)
         end,
     })
 
-    FarmTab:Section({ Title = "สถานะระบบ" })
-    FarmTab:Paragraph({
-        Title = "Farm Route",
-        Desc = "CaveStage1 → CaveStage10 → Treasure → Respawn → เริ่มรอบใหม่",
-    })
-    FarmTab:Paragraph({
-        Title = "Stage Delay",
-        Desc = "2.3 วินาทีต่อด่าน",
-    })
+    BuildTab:Section({ Title = "Tools" })
 
-    MainTab:Section({ Title = "เครื่องมือ" })
-    MainTab:Button({
-        Title = "เข้าเซิร์ฟเวอร์ใหม่",
-        Desc = "ออกจากเซิร์ฟเวอร์ปัจจุบันแล้วเข้าใหม่",
+    BuildTab:Button({
+        Title = "Rejoin Server",
         Icon = "refresh-cw",
+        Desc = "เข้าเซิร์ฟเวอร์ใหม่",
         Callback = function()
             pcall(function()
                 TeleportService:Teleport(game.PlaceId, LP)
@@ -384,13 +359,14 @@ function Module.Init(Window, WindUI)
         end,
     })
 
-    MainTab:Button({
-        Title = "รีเซ็ตแท่นฟาร์ม",
-        Desc = "ย้ายแท่นช่วยฟาร์มกลับตำแหน่งเริ่มต้น",
+    BuildTab:Button({
+        Title = "Reset Farm Platform",
         Icon = "rotate-ccw",
+        Desc = "รีเซ็ตแท่นช่วยฟาร์ม",
         Callback = function()
             if Platform and Platform.Parent then
                 Platform.Position = Vector3.new(0, 0, 0)
+                notify("Farm Platform", "รีเซ็ตตำแหน่งแล้ว")
             end
         end,
     })
