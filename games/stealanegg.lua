@@ -3,6 +3,20 @@
 local Module = {}
 
 function Module.Init(Window, WindUI)
+    -- Defensive adapter: recover an RVX Window if the caller did not pass one.
+    if not Window then
+        local ok, Core = pcall(function()
+            return loadstring(game:HttpGet("https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/core.lua"))()
+        end)
+        if ok and Core and type(Core.Init) == "function" then
+            local okInit, w, wu = pcall(function() return Core.Init("Steal An Egg") end)
+            if okInit then Window, WindUI = w, wu end
+        end
+    end
+    if not Window or type(Window.Tab) ~= "function" then
+        warn("[RVX Hub] Steal An Egg: RVX Window/Tab API unavailable")
+        return false
+    end
 -- Masmo HUB · Steal an Egg
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -88,7 +102,7 @@ end
 -- Internal aliases (used by compact logic below)
 local e, r, y, u, w, j, k, a, o = Players, Workspace, RunService, TweenService, UserInputService, ReplicatedStorage, ProximityPromptService, HttpService, LocalPlayer
 
-local Window = nil
+-- Window is provided by Module.Init; do not shadow the parameter.
 local currentLang = "EN"
 local executorCheckCaller = typeof(checkcaller) == "function" and checkcaller or function() return false end
 local safeNewCClosure = typeof(newcclosure) == "function" and newcclosure or function(fn) return fn end
