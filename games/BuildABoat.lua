@@ -313,10 +313,9 @@ function Module.Init(Window, WindUI)
         end
     end)
 
-    -- Main tabs. Icons are supplied by RVX, so titles intentionally contain no emoji.
-    local MainTab = Window:Tab({ Title = "Main", Icon = "home" })
-    local FarmTab = Window:Tab({ Title = "Farm", Icon = "zap" })
-    local SettingsTab = Window:Tab({ Title = "Settings", Icon = "settings" })
+    -- Layout: ใช้เฉพาะแท็บของแมพ 2 แท็บ ส่วน Settings ใช้ของ RVX Hub เพียงอันเดียว
+    local MainTab = Window:Tab({ Title = "หน้าหลัก", Icon = "home" })
+    local FarmTab = Window:Tab({ Title = "ฟาร์ม", Icon = "coins" })
 
     MainTab:Section({ Title = "Build A Boat For Treasure" })
     MainTab:Paragraph({
@@ -373,10 +372,10 @@ function Module.Init(Window, WindUI)
         Desc = "2.3 วินาทีต่อด่าน",
     })
 
-    SettingsTab:Section({ Title = "Utility" })
-    SettingsTab:Button({
-        Title = "Rejoin Server",
-        Desc = "ออกจากเซิร์ฟเวอร์แล้วเข้าใหม่",
+    MainTab:Section({ Title = "เครื่องมือ" })
+    MainTab:Button({
+        Title = "เข้าเซิร์ฟเวอร์ใหม่",
+        Desc = "ออกจากเซิร์ฟเวอร์ปัจจุบันแล้วเข้าใหม่",
         Icon = "refresh-cw",
         Callback = function()
             pcall(function()
@@ -385,9 +384,9 @@ function Module.Init(Window, WindUI)
         end,
     })
 
-    SettingsTab:Button({
-        Title = "Reset Farm Platform",
-        Desc = "ย้ายแท่นช่วยฟาร์มกลับไปตำแหน่งเริ่มต้น",
+    MainTab:Button({
+        Title = "รีเซ็ตแท่นฟาร์ม",
+        Desc = "ย้ายแท่นช่วยฟาร์มกลับตำแหน่งเริ่มต้น",
         Icon = "rotate-ccw",
         Callback = function()
             if Platform and Platform.Parent then
