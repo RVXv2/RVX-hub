@@ -16,6 +16,7 @@ local MAP_MODULES = {
     [113290951185459] = "https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/animedice.lua", -- Anime Dice
     [124216119978534] = "https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/rideapet.lua", -- Ride A Pet
     [107778070777162] = "https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/stealanegg.lua", -- Steal An Egg
+    [537413528] = "https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/BuildABoat.lua",
 }
 
 do
