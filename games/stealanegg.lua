@@ -4930,10 +4930,10 @@ local function oM(...)
         end)
     end
 
-    local FarmTab = Window:Tab({ Title = "🥚 Farm", Icon = "egg" })
-    local TargetTab = Window:Tab({ Title = "🎯 Target", Icon = "target" })
-    local CharacterTab = Window:Tab({ Title = "👤 Character", Icon = "user" })
-    local SystemTab = Window:Tab({ Title = "⚙️ System", Icon = "settings" })
+    local FarmTab = Window:Tab({ Title = "Farm", Icon = "egg" })
+    local TargetTab = Window:Tab({ Title = "Target", Icon = "target" })
+    local CharacterTab = Window:Tab({ Title = "Character", Icon = "user" })
+    local SystemTab = Window:Tab({ Title = "System", Icon = "settings" })
 
     FarmTab:Section({ Title = "การขโมยไข่", Desc = "ฟังก์ชันหลักของ Masmo" })
 
