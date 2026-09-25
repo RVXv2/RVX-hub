@@ -335,11 +335,19 @@ end
 -- ===== แท็บ "เซิร์ฟเวอร์" =====
 -- เก็บระบบที่เกี่ยวกับการเชื่อมต่อ/การกลับเข้าเซิร์ฟเวอร์ไว้ในแท็บเดียว
 function Core.Server(Window, WindUI)
+    local GlobalStore = (type(getgenv) == "function" and getgenv()) or _G
+    GlobalStore.__RVXHub_Instance = GlobalStore.__RVXHub_Instance or {}
+    if GlobalStore.__RVXHub_Instance.ServerTabCreated then
+        return GlobalStore.__RVXHub_Instance.ServerTab
+    end
+
     local T = LANG[Core.Config.Language] or LANG.TH
     local Players = game:GetService("Players")
     local TeleportService = game:GetService("TeleportService")
 
     local ServerTab = Window:Tab({ Title = T.server, Icon = "server" })
+    GlobalStore.__RVXHub_Instance.ServerTabCreated = true
+    GlobalStore.__RVXHub_Instance.ServerTab = ServerTab
     Core.RegisterLanguageRefresh(function(T2)
         pcall(function() ServerTab:SetTitle(T2.server) end)
     end)
@@ -721,6 +729,9 @@ end
 -- Core.Settings(Window, WindUI) คือเรียกนอก if hideUniversalTabs เพื่อให้ขึ้น
 -- ทุกแมพเสมอ
 function Core.SavedSettingsTab(Window, WindUI)
+    -- บังคับลำดับให้ Server มาก่อน Saved Settings เสมอ
+    Core.Server(Window, WindUI)
+
     local T = LANG[Core.Config.Language] or LANG.TH
 
     local SavedTab = Window:Tab({ Title = T.savedSettings, Icon = "save" })
