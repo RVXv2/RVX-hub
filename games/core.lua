@@ -68,6 +68,8 @@ local LANG = {
         settings = "การตั้งค่า",
         general = "การตั้งค่าทั่วไป",
         generalDesc = "ปรับแต่งการทำงานของ Hub",
+        server = "เซิร์ฟเวอร์",
+        serverDesc = "จัดการการเชื่อมต่อและการกลับเข้าเซิร์ฟเวอร์",
         theme = "ธีม",
         connection = "การเชื่อมต่อ",
         connectionDesc = "จัดการการหลุดเซิร์ฟเวอร์",
@@ -118,6 +120,8 @@ local LANG = {
         settings = "Settings",
         general = "General Settings",
         generalDesc = "Customize how the Hub works",
+        server = "Server",
+        serverDesc = "Manage connection and server rejoin settings",
         theme = "Theme",
         connection = "Connection",
         connectionDesc = "Manage server disconnects",
@@ -328,10 +332,102 @@ function Core.Init(mapName)
     return Window, WindUI
 end
 
+-- ===== แท็บ "เซิร์ฟเวอร์" =====
+-- เก็บระบบที่เกี่ยวกับการเชื่อมต่อ/การกลับเข้าเซิร์ฟเวอร์ไว้ในแท็บเดียว
+function Core.Server(Window, WindUI)
+    local T = LANG[Core.Config.Language] or LANG.TH
+    local Players = game:GetService("Players")
+    local TeleportService = game:GetService("TeleportService")
+
+    local ServerTab = Window:Tab({ Title = T.server, Icon = "server" })
+    Core.RegisterLanguageRefresh(function(T2)
+        pcall(function() ServerTab:SetTitle(T2.server) end)
+    end)
+
+    local serverSection = ServerTab:Section({
+        Title = T.connection,
+        Desc = T.connectionDesc,
+    })
+    Core.RegisterLanguageRefresh(function(T2)
+        pcall(function()
+            serverSection:SetTitle(T2.connection)
+            serverSection:SetDesc(T2.connectionDesc)
+        end)
+    end)
+
+    local reconnecting = false
+    local function TryAutoReconnect(reason)
+        if not Core.Config.AutoReconnect or reconnecting then return end
+        reconnecting = true
+
+        local curT = LANG[Core.Config.Language] or LANG.TH
+        pcall(function()
+            WindUI:Notify({
+                Title = curT.server,
+                Content = curT.autoreconnect .. " — " .. tostring(reason or "กำลังเชื่อมต่อใหม่"),
+                Duration = 3,
+            })
+        end)
+
+        task.delay(1, function()
+            pcall(function()
+                TeleportService:Teleport(game.PlaceId, Players.LocalPlayer)
+            end)
+            task.delay(8, function()
+                reconnecting = false
+            end)
+        end)
+    end
+
+    local autoReconnectToggle = ServerTab:Toggle({
+        Title = T.autoreconnect,
+        Desc = T.autoreconnectDesc,
+        Value = Core.Config.AutoReconnect,
+        Callback = function(state)
+            Core.Config.AutoReconnect = state
+            SaveConfigToFile(Core.Config)
+
+            local curT = LANG[Core.Config.Language] or LANG.TH
+            WindUI:Notify({
+                Title = curT.server,
+                Content = curT.autoreconnect .. ": " .. (state and "ON" or "OFF"),
+                Duration = 2,
+            })
+        end,
+    })
+    Core.RegisterLanguageRefresh(function(T2)
+        pcall(function()
+            autoReconnectToggle:SetTitle(T2.autoreconnect)
+            autoReconnectToggle:SetDesc(T2.autoreconnectDesc)
+        end)
+    end)
+
+    -- ตรวจจับการเริ่ม Teleport ที่ล้มเหลว แล้วลองเข้าใหม่เมื่อเปิด Auto Reconnect
+    pcall(function()
+        TeleportService.TeleportInitFailed:Connect(function(player, teleportResult, errorMessage)
+            if player == Players.LocalPlayer then
+                TryAutoReconnect("Teleport ล้มเหลว: " .. tostring(errorMessage or teleportResult))
+            end
+        end)
+    end)
+
+    -- Fallback สำหรับกรณีที่เกมกำลังปิด
+    pcall(function()
+        game:BindToClose(function()
+            if Core.Config.AutoReconnect then
+                pcall(function()
+                    TeleportService:Teleport(game.PlaceId, Players.LocalPlayer)
+                end)
+            end
+        end)
+    end)
+end
+
 function Core.Settings(Window, WindUI)
     local T = LANG[Core.Config.Language] or LANG.TH
     local Players = game:GetService("Players")
 
+    -- ควรเรียก Core.Settings เป็นแท็บสุดท้าย เพื่อให้ "การตั้งค่า" อยู่ล่างสุดเสมอ
     local SettingsTab = Window:Tab({ Title = T.settings, Icon = "settings" })
     Core.RegisterLanguageRefresh(function(T2)
         pcall(function() SettingsTab:SetTitle(T2.settings) end)
@@ -359,83 +455,6 @@ function Core.Settings(Window, WindUI)
         pcall(function() themeDropdown:SetTitle(T2.theme) end)
     end)
 
-    -- ===== การเชื่อมต่อ =====
-    local connectionSection = SettingsTab:Section({ Title = T.connection, Desc = T.connectionDesc })
-    Core.RegisterLanguageRefresh(function(T2)
-        pcall(function()
-            connectionSection:SetTitle(T2.connection)
-            connectionSection:SetDesc(T2.connectionDesc)
-        end)
-    end)
-
-    local TeleportService = game:GetService("TeleportService")
-
-    local reconnecting = false
-    local function TryAutoReconnect(reason)
-        if not Core.Config.AutoReconnect or reconnecting then return end
-        reconnecting = true
-
-        local curT = LANG[Core.Config.Language] or LANG.TH
-        pcall(function()
-            WindUI:Notify({
-                Title = curT.settings,
-                Content = curT.autoreconnect .. " — " .. tostring(reason or "กำลังเชื่อมต่อใหม่"),
-                Duration = 3,
-            })
-        end)
-
-        task.delay(1, function()
-            pcall(function()
-                TeleportService:Teleport(game.PlaceId, Players.LocalPlayer)
-            end)
-            task.delay(8, function()
-                reconnecting = false
-            end)
-        end)
-    end
-
-    local autoReconnectToggle = SettingsTab:Toggle({
-        Title = T.autoreconnect,
-        Desc = T.autoreconnectDesc,
-        Value = Core.Config.AutoReconnect,
-        Callback = function(state)
-            Core.Config.AutoReconnect = state
-            SaveConfigToFile(Core.Config)
-            local curT = LANG[Core.Config.Language] or LANG.TH
-            WindUI:Notify({
-                Title = curT.settings,
-                Content = curT.autoreconnect .. ": " .. (state and "ON" or "OFF"),
-                Duration = 2,
-            })
-        end,
-    })
-    Core.RegisterLanguageRefresh(function(T2)
-        pcall(function()
-            autoReconnectToggle:SetTitle(T2.autoreconnect)
-            autoReconnectToggle:SetDesc(T2.autoreconnectDesc)
-        end)
-    end)
-
-    -- ตรวจจับการเริ่ม Teleport ที่ล้มเหลว แล้วลองเข้าใหม่อีกครั้งเมื่อเปิด Auto Reconnect
-    pcall(function()
-        TeleportService.TeleportInitFailed:Connect(function(player, teleportResult, errorMessage)
-            if player == Players.LocalPlayer then
-                TryAutoReconnect("Teleport ล้มเหลว: " .. tostring(errorMessage or teleportResult))
-            end
-        end)
-    end)
-
-    -- เก็บ fallback เดิมไว้สำหรับกรณีที่เกมกำลังปิด
-    pcall(function()
-        game:BindToClose(function()
-            if Core.Config.AutoReconnect then
-                pcall(function()
-                    TeleportService:Teleport(game.PlaceId, Players.LocalPlayer)
-                end)
-            end
-        end)
-    end)
-
     -- ===== Anti-AFK =====
     local RunService = game:GetService("RunService")
     local antiAFKConnection = nil
@@ -454,7 +473,6 @@ function Core.Settings(Window, WindUI)
             local humanoid = character and character:FindFirstChildOfClass("Humanoid")
             if not humanoid or humanoid.Health <= 0 then return end
 
-            -- ขยับซ้าย/ขวาสั้น ๆ แล้วหยุด ไม่วาปและไม่ยุ่งกับตำแหน่งแปลง
             task.spawn(function()
                 pcall(function()
                     humanoid:Move(Vector3.new(1, 0, 0), false)
@@ -486,6 +504,8 @@ function Core.Settings(Window, WindUI)
         Value = Core.Config.AntiAFK,
         Callback = function(state)
             Core.Config.AntiAFK = state
+            SaveConfigToFile(Core.Config)
+
             if state then
                 StartAntiAFK()
             else
@@ -505,7 +525,7 @@ function Core.Settings(Window, WindUI)
         StartAntiAFK()
     end
 
-    -- ===== ภาษา (เปลี่ยนแล้วมีผลทันที) =====
+    -- ===== ภาษา =====
     local languageSection = SettingsTab:Section({ Title = T.language, Desc = T.languageDesc })
     Core.RegisterLanguageRefresh(function(T2)
         pcall(function()
@@ -522,16 +542,21 @@ function Core.Settings(Window, WindUI)
             if selected == Core.Config.Language then return end
             Core.Config.Language = selected
             SaveConfigToFile(Core.Config)
-            RefreshAllLanguage() -- อัปเดตข้อความทุกจุดทันที ไม่ต้องรันสคริปต์ใหม่
+            RefreshAllLanguage()
+
             local curT = LANG[Core.Config.Language] or LANG.TH
-            WindUI:Notify({ Title = curT.settings, Content = curT.languageSaved, Duration = 3 })
+            WindUI:Notify({
+                Title = curT.settings,
+                Content = curT.languageSaved,
+                Duration = 3,
+            })
         end,
     })
     Core.RegisterLanguageRefresh(function(T2)
         pcall(function() languageDropdown:SetTitle(T2.language) end)
     end)
 
-    -- ===== รูปลักษณ์ (ความโปร่งใส) =====
+    -- ===== รูปลักษณ์ =====
     local appearanceSection = SettingsTab:Section({ Title = T.appearance, Desc = T.appearanceDesc })
     Core.RegisterLanguageRefresh(function(T2)
         pcall(function()
@@ -546,8 +571,13 @@ function Core.Settings(Window, WindUI)
         Callback = function(state)
             Core.Config.Transparent = state
             SaveConfigToFile(Core.Config)
+
             local curT = LANG[Core.Config.Language] or LANG.TH
-            WindUI:Notify({ Title = curT.settings, Content = curT.transparencySaved, Duration = 4 })
+            WindUI:Notify({
+                Title = curT.settings,
+                Content = curT.transparencySaved,
+                Duration = 4,
+            })
         end,
     })
     Core.RegisterLanguageRefresh(function(T2)
@@ -622,7 +652,6 @@ function Core.Settings(Window, WindUI)
         pingLabel.TextSize = 14
         pingLabel.Parent = frame
 
-        local RunService = game:GetService("RunService")
         local frameCount = 0
         local lastTime = tick()
 
@@ -675,9 +704,15 @@ function Core.Settings(Window, WindUI)
     Core.RegisterLanguageRefresh(function(T2)
         pcall(function() statsToggle:SetTitle(T2.showStats) end)
     end)
+end
 
-    -- หมายเหตุ: ปุ่มบันทึก/รีเซ็ต/ปิด Hub ย้ายไปแท็บ "บันทึกการตั้งค่า" แยกต่างหากแล้ว
-    -- (ดูฟังก์ชัน Core.SavedSettingsTab ด้านล่าง) ไม่ได้อยู่ในแท็บนี้อีกต่อไป
+-- ===== สร้างแท็บ Universal ตามลำดับที่ต้องการ =====
+-- ลำดับ: Server -> Saved Settings -> Settings
+-- เรียกฟังก์ชันนี้หลังจากแท็บของแมพถูกสร้างแล้ว เพื่อให้ Settings อยู่ล่างสุด
+function Core.CreateUniversalTabs(Window, WindUI)
+    Core.Server(Window, WindUI)
+    Core.SavedSettingsTab(Window, WindUI)
+    Core.Settings(Window, WindUI)
 end
 
 -- ===== แท็บ "บันทึกการตั้งค่า" แยกต่างหาก (โชว์ทุกแมพเหมือน Settings) =====
