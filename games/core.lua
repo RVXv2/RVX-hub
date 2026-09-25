@@ -6,16 +6,6 @@ local CONFIG_FILE = "RVXHub_Config.json"
 
 local SCRIPTS_MODULE_URL = "https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/RVXHub_Scripts.lua"
 
-local CHANGELOG = {
-    Version = "1.0",
-    Notes = {
-        "- เปิดตัว RVX Hub เวอร์ชันแรก",
-        "- เพิ่มแท็บ Scripts สำหรับรันสคริปต์ภายนอก",
-        "- เปลี่ยนภาษามีผลทันที ไม่ต้องรันสคริปต์ใหม่",
-        "- แยกปุ่มบันทึก/รีเซ็ตการตั้งค่าไปเป็นแท็บของตัวเอง",
-    },
-}
-
 local GlobalStore = (type(getgenv) == "function" and getgenv()) or _G
 
 local function RVXHub_Cleanup()
@@ -31,6 +21,12 @@ local function RVXHub_Cleanup()
     pcall(function()
         if prev.StatsConnection then
             prev.StatsConnection:Disconnect()
+        end
+    end)
+
+    pcall(function()
+        if prev.AntiAFKConnection then
+            prev.AntiAFKConnection:Disconnect()
         end
     end)
 
@@ -55,6 +51,7 @@ GlobalStore.__RVXHub_Instance = {}
 local DEFAULT_CONFIG = {
     Theme = "Violet",
     AutoReconnect = false,
+    AntiAFK = true,
     Language = "TH",
     Transparent = true,
     QuickCloseKey = "K",
@@ -76,6 +73,8 @@ local LANG = {
         connectionDesc = "จัดการการหลุดเซิร์ฟเวอร์",
         autoreconnect = "Auto Reconnect",
         autoreconnectDesc = "เข้าเกมใหม่อัตโนมัติถ้าหลุดเซิร์ฟเวอร์",
+        antiafk = "Anti-AFK",
+        antiafkDesc = "ขยับตัวเล็กน้อยเป็นระยะเพื่อไม่ให้สถานะ AFK ค้าง",
         language = "ภาษา",
         languageDesc = "เปลี่ยนแล้วมีผลทันที ไม่ต้องรันสคริปต์ใหม่",
         appearance = "รูปลักษณ์",
@@ -108,9 +107,6 @@ local LANG = {
         scriptsLoadFailDesc = "ตรวจสอบ SCRIPTS_MODULE_URL หรือการเชื่อมต่ออินเทอร์เน็ต",
         scriptRan = "รันสคริปต์แล้ว",
         scriptError = "รันไม่สำเร็จ: ",
-        changelogSection = "ประกาศอัปเดต",
-        changelogSectionDesc = "สิ่งที่เปลี่ยนแปลงล่าสุดใน Hub",
-        changelogTitlePrefix = "อัปเดตเวอร์ชัน ",
     },
     EN = {
         home = "Home",
@@ -127,6 +123,8 @@ local LANG = {
         connectionDesc = "Manage server disconnects",
         autoreconnect = "Auto Reconnect",
         autoreconnectDesc = "Auto rejoin if you get disconnected",
+        antiafk = "Anti-AFK",
+        antiafkDesc = "Makes a small periodic movement to keep the character active",
         language = "Language",
         languageDesc = "Applies instantly, no need to rerun the script",
         appearance = "Appearance",
@@ -159,9 +157,6 @@ local LANG = {
         scriptsLoadFailDesc = "Check SCRIPTS_MODULE_URL or your internet connection",
         scriptRan = "Script executed",
         scriptError = "Failed to run: ",
-        changelogSection = "What's New",
-        changelogSectionDesc = "Latest changes in this Hub",
-        changelogTitlePrefix = "Version ",
     },
 }
 
@@ -284,22 +279,6 @@ function Core.Init(mapName)
         pcall(function() versionBtn:SetTitle(T2.version .. HUB_VERSION) end)
     end)
 
-    local changelogSection = HomeTab:Section({ Title = T.changelogSection, Desc = T.changelogSectionDesc })
-    Core.RegisterLanguageRefresh(function(T2)
-        pcall(function()
-            changelogSection:SetTitle(T2.changelogSection)
-            changelogSection:SetDesc(T2.changelogSectionDesc)
-        end)
-    end)
-
-    local changelogParagraph = HomeTab:Paragraph({
-        Title = T.changelogTitlePrefix .. CHANGELOG.Version,
-        Desc = table.concat(CHANGELOG.Notes, "\n"),
-    })
-    Core.RegisterLanguageRefresh(function(T2)
-        pcall(function() changelogParagraph:SetTitle(T2.changelogTitlePrefix .. CHANGELOG.Version) end)
-    end)
-
     local discordBtn = HomeTab:Button({
         Title = T.discord,
         Icon = "message-circle",
@@ -391,12 +370,37 @@ function Core.Settings(Window, WindUI)
 
     local TeleportService = game:GetService("TeleportService")
 
+    local reconnecting = false
+    local function TryAutoReconnect(reason)
+        if not Core.Config.AutoReconnect or reconnecting then return end
+        reconnecting = true
+
+        local curT = LANG[Core.Config.Language] or LANG.TH
+        pcall(function()
+            WindUI:Notify({
+                Title = curT.settings,
+                Content = curT.autoreconnect .. " — " .. tostring(reason or "กำลังเชื่อมต่อใหม่"),
+                Duration = 3,
+            })
+        end)
+
+        task.delay(1, function()
+            pcall(function()
+                TeleportService:Teleport(game.PlaceId, Players.LocalPlayer)
+            end)
+            task.delay(8, function()
+                reconnecting = false
+            end)
+        end)
+    end
+
     local autoReconnectToggle = SettingsTab:Toggle({
         Title = T.autoreconnect,
         Desc = T.autoreconnectDesc,
         Value = Core.Config.AutoReconnect,
         Callback = function(state)
             Core.Config.AutoReconnect = state
+            SaveConfigToFile(Core.Config)
             local curT = LANG[Core.Config.Language] or LANG.TH
             WindUI:Notify({
                 Title = curT.settings,
@@ -412,6 +416,16 @@ function Core.Settings(Window, WindUI)
         end)
     end)
 
+    -- ตรวจจับการเริ่ม Teleport ที่ล้มเหลว แล้วลองเข้าใหม่อีกครั้งเมื่อเปิด Auto Reconnect
+    pcall(function()
+        TeleportService.TeleportInitFailed:Connect(function(player, teleportResult, errorMessage)
+            if player == Players.LocalPlayer then
+                TryAutoReconnect("Teleport ล้มเหลว: " .. tostring(errorMessage or teleportResult))
+            end
+        end)
+    end)
+
+    -- เก็บ fallback เดิมไว้สำหรับกรณีที่เกมกำลังปิด
     pcall(function()
         game:BindToClose(function()
             if Core.Config.AutoReconnect then
@@ -421,6 +435,75 @@ function Core.Settings(Window, WindUI)
             end
         end)
     end)
+
+    -- ===== Anti-AFK =====
+    local RunService = game:GetService("RunService")
+    local antiAFKConnection = nil
+
+    local function StartAntiAFK()
+        if antiAFKConnection then return end
+
+        local elapsed = 0
+        antiAFKConnection = RunService.Heartbeat:Connect(function(dt)
+            if not Core.Config.AntiAFK then return end
+            elapsed = elapsed + dt
+            if elapsed < 45 then return end
+            elapsed = 0
+
+            local character = Players.LocalPlayer.Character
+            local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+            if not humanoid or humanoid.Health <= 0 then return end
+
+            -- ขยับซ้าย/ขวาสั้น ๆ แล้วหยุด ไม่วาปและไม่ยุ่งกับตำแหน่งแปลง
+            task.spawn(function()
+                pcall(function()
+                    humanoid:Move(Vector3.new(1, 0, 0), false)
+                    task.wait(0.35)
+                    humanoid:Move(Vector3.new(-1, 0, 0), false)
+                    task.wait(0.35)
+                    humanoid:Move(Vector3.zero, false)
+                end)
+            end)
+        end)
+
+        GlobalStore.__RVXHub_Instance = GlobalStore.__RVXHub_Instance or {}
+        GlobalStore.__RVXHub_Instance.AntiAFKConnection = antiAFKConnection
+    end
+
+    local function StopAntiAFK()
+        if antiAFKConnection then
+            antiAFKConnection:Disconnect()
+            antiAFKConnection = nil
+        end
+        if GlobalStore.__RVXHub_Instance then
+            GlobalStore.__RVXHub_Instance.AntiAFKConnection = nil
+        end
+    end
+
+    local antiAFKToggle = SettingsTab:Toggle({
+        Title = T.antiafk,
+        Desc = T.antiafkDesc,
+        Value = Core.Config.AntiAFK,
+        Callback = function(state)
+            Core.Config.AntiAFK = state
+            if state then
+                StartAntiAFK()
+            else
+                StopAntiAFK()
+            end
+        end,
+    })
+
+    Core.RegisterLanguageRefresh(function(T2)
+        pcall(function()
+            antiAFKToggle:SetTitle(T2.antiafk)
+            antiAFKToggle:SetDesc(T2.antiafkDesc)
+        end)
+    end)
+
+    if Core.Config.AntiAFK then
+        StartAntiAFK()
+    end
 
     -- ===== ภาษา (เปลี่ยนแล้วมีผลทันที) =====
     local languageSection = SettingsTab:Section({ Title = T.language, Desc = T.languageDesc })
