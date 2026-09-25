@@ -7,15 +7,13 @@ local mapName = (ok and info and info.Name) or "Universal"
 
 local Window, WindUI = Core.Init(mapName)
 
--- ===== โมดูลเสริมเฉพาะแมพ (โหลดเพิ่มเฉพาะตอน PlaceId ตรงกับที่กำหนดไว้เท่านั้น) =====
--- เพิ่มแมพใหม่ได้โดยเพิ่มบรรทัดในตาราง MAP_MODULES ด้านล่าง: [PlaceId] = "raw URL ของไฟล์"
--- โมดูลปลายทางต้อง return table ที่มีฟังก์ชัน Init(Window, WindUI) เท่านั้น (ดูตัวอย่างใน greedygrowers.lua)
+-- ===== โมดูลเสริมเฉพาะแมพ =====
 local MAP_MODULES = {
-    [74102906764176] = "https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/greedygrowers.lua", -- Greedy Growers
-    [16732694052] = "https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/fisch.lua", -- Fisch
-    [113290951185459] = "https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/animedice.lua", -- Anime Dice
-    [124216119978534] = "https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/rideapet.lua", -- Ride A Pet
-    [107778070777162] = "https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/stealanegg.lua", -- Steal An Egg
+    [74102906764176] = "https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/greedygrowers.lua",
+    [16732694052] = "https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/fisch.lua",
+    [113290951185459] = "https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/animedice.lua",
+    [124216119978534] = "https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/rideapet.lua",
+    [107778070777162] = "https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/stealanegg.lua",
     [537413528] = "https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/BuildABoat.lua",
     [93978595733734] = "https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/violencedistrict.lua",
 }
@@ -48,26 +46,23 @@ end
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
--- ===== แมพที่ไม่ต้องการให้โชว์แท็บกลาง (เพลง/ดูโอไอดีเพลง/เทเลพอต/มิก) =====
--- เพิ่ม PlaceId เข้าไปในตารางนี้ได้ถ้าอยากซ่อนแท็บกลางสำหรับแมพอื่นในอนาคต
+-- ===== แมพที่ไม่ต้องการให้โชว์แท็บกลาง =====
 local HIDE_UNIVERSAL_TABS_FOR = {
     [113290951185459] = true, -- Anime Dice
     [124216119978534] = true, -- Ride A Pet
     [107778070777162] = true, -- Steal An Egg
     [537413528] = true, -- Build A Boat For Treasure
+    [93978595733734] = true, -- Violence District
 }
+
 local hideUniversalTabs = HIDE_UNIVERSAL_TABS_FOR[game.PlaceId] == true
 
 if not hideUniversalTabs then
 
--- ===== แท็บเพลง (ค้นหา/คัดลอกเท่านั้น) =====
 local Songs = loadstring(game:HttpGet("https://raw.githubusercontent.com/RVXv2/RVX-hub/main/games/songs.lua"))()
 Songs.AddSongsTab(Window, WindUI, false)
-
--- ===== แท็บดูดไอดีเพลง (ใช้ได้ทุกแมพ) =====
 Songs.AddSniffTab(Window, WindUI)
 
--- ===== แท็บเทเลพอต =====
 local TeleportTab = Window:Tab({ Title = "เทเลพอต", Icon = "map-pin" })
 
 TeleportTab:Section({ Title = "วาปหาผู้เล่น", Desc = "เลือกผู้เล่นที่ต้องการเทเลพอตไปหา" })
@@ -154,11 +149,8 @@ TeleportTab:Button({
     end,
 })
 
--- ===== แท็บการป้องกัน =====
 local MixTab = Window:Tab({ Title = "มิก", Icon = "layers" })
 
--- บันทึก/โหลดค่า toggle ทั้งหมดลงไฟล์แยก เพื่อให้จำค่าได้แม้ออกเข้าเกมใหม่
--- (รันสคริปต์ใหม่) ไม่ต้องมาติ๊กเปิดใหม่ทุกครั้ง
 local PROTECTION_CONFIG_FILE = "RVXHub_ProtectionConfig.json"
 
 local function LoadProtectionConfig()
@@ -261,7 +253,6 @@ if LocalPlayer.Character then
 end
 
 local NORMAL_VELOCITY_LIMIT = 90
-local LastGoodVelocity = Vector3.new(0, 0, 0)
 
 game:GetService("RunService").Heartbeat:Connect(function()
     ApplyRagdollStates()
