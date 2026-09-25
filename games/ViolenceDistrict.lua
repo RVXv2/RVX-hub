@@ -134,15 +134,15 @@ function ViolenceDistrict.Init(Window, WindUI)
     local RVXWindow = Window
 
     -- RVX HUB tabs for Violence District
-    local MainTab = RVXRVXWindow:Tab({ Title = "info", Icon = "info" })
-    local ESPTab = RVXRVXWindow:Tab({ Title = "ESP", Icon = "eye" })
-    RVXRVXWindow:Divider()
-    local SurviveTab = RVXRVXWindow:Tab({ Title = "Survive", Icon = "user-check" })
-    local KillerTab = RVXRVXWindow:Tab({ Title = "Killer", Icon = "skull" })
-    local PlayerTab = RVXRVXWindow:Tab({ Title = "Player", Icon = "user" })
-    RVXRVXWindow:Divider()
-    local TeleportTab = RVXRVXWindow:Tab({ Title = "Teleport", Icon = "send" })
-    local SettingsTab = RVXRVXWindow:Tab({ Title = "Settings", Icon = "settings" })
+    local MainTab = RVXWindow:Tab({ Title = "info", Icon = "info" })
+    local ESPTab = RVXWindow:Tab({ Title = "ESP", Icon = "eye" })
+    RVXWindow:Divider()
+    local SurviveTab = RVXWindow:Tab({ Title = "Survive", Icon = "user-check" })
+    local KillerTab = RVXWindow:Tab({ Title = "Killer", Icon = "skull" })
+    local PlayerTab = RVXWindow:Tab({ Title = "Player", Icon = "user" })
+    RVXWindow:Divider()
+    local TeleportTab = RVXWindow:Tab({ Title = "Teleport", Icon = "send" })
+    local SettingsTab = RVXWindow:Tab({ Title = "Settings", Icon = "settings" })
 
     -- ══════════════════════════════════════════════════════════════════
     --  [7]  HELPER / UTILITY FUNCTIONS
