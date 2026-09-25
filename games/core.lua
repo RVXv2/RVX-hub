@@ -431,39 +431,8 @@ function Core.Server(Window, WindUI)
     end)
 end
 
-function Core.Settings(Window, WindUI)
-    local T = LANG[Core.Config.Language] or LANG.TH
-    local Players = game:GetService("Players")
-
-    -- ควรเรียก Core.Settings เป็นแท็บสุดท้าย เพื่อให้ "การตั้งค่า" อยู่ล่างสุดเสมอ
-    local SettingsTab = Window:Tab({ Title = T.settings, Icon = "settings" })
-    Core.RegisterLanguageRefresh(function(T2)
-        pcall(function() SettingsTab:SetTitle(T2.settings) end)
-    end)
-
-    -- ===== ทั่วไป =====
-    local generalSection = SettingsTab:Section({ Title = T.general, Desc = T.generalDesc })
-    Core.RegisterLanguageRefresh(function(T2)
-        pcall(function()
-            generalSection:SetTitle(T2.general)
-            generalSection:SetDesc(T2.generalDesc)
-        end)
-    end)
-
-    local themeDropdown = SettingsTab:Dropdown({
-        Title = T.theme,
-        Values = { "Dark", "Light", "Emerald", "Plant", "Midnight", "Violet", "Rose", "MonokaiPro" },
-        Value = Core.Config.Theme,
-        Callback = function(selected)
-            Core.Config.Theme = selected
-            WindUI:SetTheme(selected)
-        end,
-    })
-    Core.RegisterLanguageRefresh(function(T2)
-        pcall(function() themeDropdown:SetTitle(T2.theme) end)
-    end)
-
     -- ===== Anti-AFK =====
+    -- อยู่ในแท็บ Server เพราะเป็นระบบที่เกี่ยวกับการคงสถานะการเชื่อมต่อ
     local RunService = game:GetService("RunService")
     local antiAFKConnection = nil
 
@@ -492,7 +461,6 @@ function Core.Settings(Window, WindUI)
             end)
         end)
 
-        GlobalStore.__RVXHub_Instance = GlobalStore.__RVXHub_Instance or {}
         GlobalStore.__RVXHub_Instance.AntiAFKConnection = antiAFKConnection
     end
 
@@ -501,19 +469,16 @@ function Core.Settings(Window, WindUI)
             antiAFKConnection:Disconnect()
             antiAFKConnection = nil
         end
-        if GlobalStore.__RVXHub_Instance then
-            GlobalStore.__RVXHub_Instance.AntiAFKConnection = nil
-        end
+        GlobalStore.__RVXHub_Instance.AntiAFKConnection = nil
     end
 
-    local antiAFKToggle = SettingsTab:Toggle({
+    local antiAFKToggle = ServerTab:Toggle({
         Title = T.antiafk,
         Desc = T.antiafkDesc,
         Value = Core.Config.AntiAFK,
         Callback = function(state)
             Core.Config.AntiAFK = state
             SaveConfigToFile(Core.Config)
-
             if state then
                 StartAntiAFK()
             else
@@ -521,7 +486,6 @@ function Core.Settings(Window, WindUI)
             end
         end,
     })
-
     Core.RegisterLanguageRefresh(function(T2)
         pcall(function()
             antiAFKToggle:SetTitle(T2.antiafk)
@@ -532,6 +496,54 @@ function Core.Settings(Window, WindUI)
     if Core.Config.AntiAFK then
         StartAntiAFK()
     end
+end
+
+function Core.Settings(Window, WindUI)
+    local GlobalStore = (type(getgenv) == "function" and getgenv()) or _G
+    GlobalStore.__RVXHub_Instance = GlobalStore.__RVXHub_Instance or {}
+
+    -- สร้าง Settings หลังจากแท็บ Universal อื่น ๆ ในรอบปัจจุบันถูกสร้างแล้ว
+    -- เพื่อให้ Settings อยู่ล่างสุด แม้ตัว loader จะเรียก Settings ก่อน SavedSettingsTab
+    if GlobalStore.__RVXHub_Instance.SettingsTab then
+        return GlobalStore.__RVXHub_Instance.SettingsTab
+    end
+    if GlobalStore.__RVXHub_Instance.SettingsPending then
+        return GlobalStore.__RVXHub_Instance.SettingsTab
+    end
+    GlobalStore.__RVXHub_Instance.SettingsPending = true
+
+    task.defer(function()
+        if GlobalStore.__RVXHub_Instance.SettingsTab then return end
+
+        local T = LANG[Core.Config.Language] or LANG.TH
+        local Players = game:GetService("Players")
+        local SettingsTab = Window:Tab({ Title = T.settings, Icon = "settings" })
+        GlobalStore.__RVXHub_Instance.SettingsTab = SettingsTab
+    Core.RegisterLanguageRefresh(function(T2)
+        pcall(function() SettingsTab:SetTitle(T2.settings) end)
+    end)
+
+    -- ===== ทั่วไป =====
+    local generalSection = SettingsTab:Section({ Title = T.general, Desc = T.generalDesc })
+    Core.RegisterLanguageRefresh(function(T2)
+        pcall(function()
+            generalSection:SetTitle(T2.general)
+            generalSection:SetDesc(T2.generalDesc)
+        end)
+    end)
+
+    local themeDropdown = SettingsTab:Dropdown({
+        Title = T.theme,
+        Values = { "Dark", "Light", "Emerald", "Plant", "Midnight", "Violet", "Rose", "MonokaiPro" },
+        Value = Core.Config.Theme,
+        Callback = function(selected)
+            Core.Config.Theme = selected
+            WindUI:SetTheme(selected)
+        end,
+    })
+    Core.RegisterLanguageRefresh(function(T2)
+        pcall(function() themeDropdown:SetTitle(T2.theme) end)
+    end)
 
     -- ===== ภาษา =====
     local languageSection = SettingsTab:Section({ Title = T.language, Desc = T.languageDesc })
@@ -712,6 +724,7 @@ function Core.Settings(Window, WindUI)
     Core.RegisterLanguageRefresh(function(T2)
         pcall(function() statsToggle:SetTitle(T2.showStats) end)
     end)
+end)
 end
 
 -- ===== สร้างแท็บ Universal ตามลำดับที่ต้องการ =====
