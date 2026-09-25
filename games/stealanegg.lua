@@ -653,8 +653,25 @@ local function stabilizeEggWithDrop(uid, cf, model, session)
         if tool and (not toolUid or tostring(toolUid)==tostring(uid)) then
             h.dropRegrabDone=true
             h.carryUid=uid
+            h.securingEgg=false
+            h.holdingEggForGuard=true
+            h.isReturning=true
             h.statusText="[CarryFix] เก็บรอบสองสำเร็จ กำลังบินกลับทันที..."
-            H(string.format("[CarryFix] Second pickup confirmed: %s",tostring(uid)))
+            H(string.format("[CarryFix] Second pickup confirmed: %s | FORCE RETURN",tostring(uid)))
+            -- Do not wait for the outer farm loop to notice the new state.
+            -- Start the return immediately while the second pickup is still fresh.
+            local returnOk=false
+            pcall(function()
+                returnOk=Q4(h.glideSpeed,session,uid)
+            end)
+            if not returnOk then
+                -- Q4 can be interrupted by a transient state change; keep the carry
+                -- state alive so the outer loop can retry instead of standing still.
+                h.isReturning=true
+                h.carryUid=uid
+                h.securingEgg=false
+                h.holdingEggForGuard=true
+            end
             return true
         end
 
@@ -2109,7 +2126,7 @@ Q4=function(e,r,carryUid,...)
     local a=Vector3.new (E- 10 , 70 ,k)e=math.max ( 100 ,e or h.glideSpeed or 350 )h.isReturning = true h.stateTime =os.clock ()h.carryUid=carryUid or h.carryUid V4(Vector3.new (E, 70 ,k), 20 )w.AssemblyLinearVelocity =Vector3.zero w.AssemblyAngularVelocity =Vector3.zero
     local V=o4()
     local H=math.max (e,V)
-    local s=os.clock ()+ 15
+    local s=os.clock ()+ 25
     while h.alive and(h.isReturning and os.clock ()<s)do
         if r and O4~=r then
             t( "[Return] Aborted by session switch!" )
@@ -2119,7 +2136,7 @@ Q4=function(e,r,carryUid,...)
             h.isReturning = false
             return false
         end
-        if not h.pureTweenFarm and not h.autoFarmLoop then
+        if not h.pureTweenFarm and not h.autoFarmLoop and not h.carryUid then
             t( "[Return] Aborted (all farms disabled)" )
             if j then
                 j.AutoRotate = true
