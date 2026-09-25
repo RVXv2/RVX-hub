@@ -397,9 +397,6 @@ local W=T()h={[ "godmode" ]= true ,[ "autoGlide" ]= true ,[ "autoHatch" ]= true 
 [ "webhookUrl" ]= "" ;
 [ "webhookOnSteal" ]= true ;
 [ "webhookOnHop" ]= true ;
-[ "dropRegrabEnabled" ]= true ;
-[ "dropRegrabDone" ]= false ;
-[ "carryUid" ]= nil ;
 }
 local m
 local e4
@@ -555,150 +552,6 @@ u4=function(e,...)
         end
     end
 end
-
--- Carry stabilizer: the game can reclaim/drop an egg if it is only picked once.
--- The intended flow is: pick #1 -> press the game's "ทิ้ง/Drop" button -> pick #2 -> return.
-local function findEggDropButton()
-    local gui=o:FindFirstChild("PlayerGui")
-    if not gui then return nil end
-    local best=nil
-    local bestScore=-1
-    pcall(function()
-        for _,obj in ipairs(gui:GetDescendants()) do
-            if (obj:IsA("TextButton") or obj:IsA("ImageButton") or obj:IsA("GuiButton")) and obj.Visible then
-                local text=""
-                if obj:IsA("TextButton") then text=tostring(obj.Text or "") end
-                local name=tostring(obj.Name or "")
-                local hay=(text.." "..name):lower()
-                local score=0
-                if hay:find("ทิ้ง",1,true) then score=100 end
-                if hay:find("drop",1,true) then score=90 end
-                if hay:find("discard",1,true) then score=85 end
-                if hay:find("trash",1,true) then score=80 end
-                if score>bestScore then
-                    best=obj
-                    bestScore=score
-                end
-            end
-        end
-    end)
-    return best
-end
-
-local function pressEggDropButton()
-    local btn=findEggDropButton()
-    if not btn then return false end
-    local fired=false
-    pcall(function()
-        if typeof(firebutton1click)=="function" then
-            firebutton1click(btn)
-            fired=true
-        elseif typeof(firesignal)=="function" and btn.Activated then
-            firesignal(btn.Activated)
-            fired=true
-        elseif typeof(firesignal)=="function" and btn.MouseButton1Click then
-            firesignal(btn.MouseButton1Click)
-            fired=true
-        end
-    end)
-    return fired
-end
-
-local function stabilizeEggWithDrop(uid, cf, model, session)
-    if not h.dropRegrabEnabled or not uid then return false end
-    if session and O4~=session then return false end
-
-    local char=o.Character
-    local root=char and char:FindFirstChild("HumanoidRootPart")
-    local hum=char and char:FindFirstChildOfClass("Humanoid")
-    if not root or not hum then return false end
-
-    -- Make sure the first pickup really exists locally before pressing Drop.
-    local firstTool,firstUid=e4()
-    if not firstTool or (firstUid and tostring(firstUid)~=tostring(uid)) then
-        return false
-    end
-
-    h.statusText="[CarryFix 1/2] เก็บไข่รอบแรกแล้ว กำลังกดทิ้ง..."
-    H(string.format("[CarryFix] First pickup confirmed: %s -> pressing Drop once",tostring(uid)))
-    h.holdingEggForGuard=true
-    h.securingEgg=true
-    h.carryUid=uid
-
-    if not pressEggDropButton() then
-        t("[CarryFix] Drop button not found; keeping legacy GuardStrike flow")
-        return false
-    end
-
-    -- Give the game a short moment to register the drop, but do not wait long enough
-    -- for another player to have a useful window to take it.
-    local dropDeadline=os.clock()+0.75
-    while os.clock()<dropDeadline and h.alive do
-        if session and O4~=session then return false end
-        local tool,toolUid=e4()
-        if not tool or (toolUid and tostring(toolUid)~=tostring(uid)) then
-            break
-        end
-        task.wait(0.03)
-    end
-
-    h.statusText="[CarryFix 2/2] เก็บไข่รอบสองทันที..."
-    H(string.format("[CarryFix] Re-grabbing %s immediately after Drop",tostring(uid)))
-
-    local deadline=os.clock()+2.25
-    local lastFire=0
-    while os.clock()<deadline and h.alive and h.securingEgg do
-        if session and O4~=session then return false end
-        local tool,toolUid=e4()
-        if tool and (not toolUid or tostring(toolUid)==tostring(uid)) then
-            h.dropRegrabDone=true
-            h.carryUid=uid
-            h.securingEgg=false
-            h.holdingEggForGuard=true
-            h.isReturning=true
-            h.statusText="[CarryFix] เก็บรอบสองสำเร็จ กำลังบินกลับทันที..."
-            H(string.format("[CarryFix] Second pickup confirmed: %s | FORCE RETURN",tostring(uid)))
-            -- Do not wait for the outer farm loop to notice the new state.
-            -- Start the return immediately while the second pickup is still fresh.
-            local returnOk=false
-            pcall(function()
-                returnOk=Q4(h.glideSpeed,session,uid)
-            end)
-            if not returnOk then
-                -- Q4 can be interrupted by a transient state change; keep the carry
-                -- state alive so the outer loop can retry instead of standing still.
-                h.isReturning=true
-                h.carryUid=uid
-                h.securingEgg=false
-                h.holdingEggForGuard=true
-            end
-            return true
-        end
-
-        root=char:FindFirstChild("HumanoidRootPart") or root
-        if cf then
-            root.CFrame=cf*CFrame.new(0,0.4,0)
-        end
-        d4(model,cf and cf.Position or root.Position)
-        if i and os.clock()-lastFire>=0.18 then
-            lastFire=os.clock()
-            task.spawn(function()
-                pcall(function()
-                    if i:IsA("RemoteFunction") then
-                        i:InvokeServer({["Uid"]=uid})
-                    else
-                        i:FireServer({["Uid"]=uid})
-                    end
-                end)
-            end)
-        end
-        y.Heartbeat:Wait()
-    end
-
-    t(string.format("[CarryFix] Second pickup failed: %s",tostring(uid)))
-    return false
-end
-
 w4=function(e,...)
     if((h.pureTweenFarm or h.autoFarmLoop ))and not h.holdingEggForGuard then
         local e=e4()
@@ -2112,7 +1965,7 @@ R4=function(e,r,y,u,...)
     end
     return wk(e,r,y,u)
 end
-Q4=function(e,r,carryUid,...)
+Q4=function(e,r,...)
     local u=o.Character
     local w=u and u:FindFirstChild( "HumanoidRootPart" )
     local j=u and u:FindFirstChildOfClass( "Humanoid" )
@@ -2123,10 +1976,10 @@ Q4=function(e,r,carryUid,...)
         j.AutoRotate = false
     end
     local k=h.laneZ or L
-    local a=Vector3.new (E- 10 , 70 ,k)e=math.max ( 100 ,e or h.glideSpeed or 350 )h.isReturning = true h.stateTime =os.clock ()h.carryUid=carryUid or h.carryUid V4(Vector3.new (E, 70 ,k), 20 )w.AssemblyLinearVelocity =Vector3.zero w.AssemblyAngularVelocity =Vector3.zero
+    local a=Vector3.new (E- 10 , 70 ,k)e=math.max ( 100 ,e or h.glideSpeed or 350 )h.isReturning = true h.stateTime =os.clock ()V4(Vector3.new (E, 70 ,k), 20 )w.AssemblyLinearVelocity =Vector3.zero w.AssemblyAngularVelocity =Vector3.zero
     local V=o4()
     local H=math.max (e,V)
-    local s=os.clock ()+ 25
+    local s=os.clock ()+ 15
     while h.alive and(h.isReturning and os.clock ()<s)do
         if r and O4~=r then
             t( "[Return] Aborted by session switch!" )
@@ -2136,7 +1989,7 @@ Q4=function(e,r,carryUid,...)
             h.isReturning = false
             return false
         end
-        if not h.pureTweenFarm and not h.autoFarmLoop and not h.carryUid then
+        if not h.pureTweenFarm and not h.autoFarmLoop then
             t( "[Return] Aborted (all farms disabled)" )
             if j then
                 j.AutoRotate = true
@@ -2149,29 +2002,6 @@ Q4=function(e,r,carryUid,...)
         if e.X <=(E+ 10 )or o<= 6 then
             u4()
             break
-        end
-        -- IMPORTANT: never UnequipTools while returning with an egg.
-        -- The game can interpret that as releasing the carried egg.
-        if h.carryUid then
-            local tool,toolUid=e4()
-            if not tool then
-                local backpack=o:FindFirstChild("Backpack")
-                local candidate=nil
-                if backpack then
-                    for _,obj in ipairs(backpack:GetChildren()) do
-                        if m(obj) then
-                            local id=obj:GetAttribute("UID") or obj:GetAttribute("EggUid")
-                            if not toolUid or not id or tostring(id)==tostring(h.carryUid) then
-                                candidate=obj
-                                break
-                            end
-                        end
-                    end
-                end
-                if candidate and j then
-                    pcall(function() j:EquipTool(candidate) end)
-                end
-            end
         end
         local V=y.Heartbeat :Wait()e=w.Position
         local s=H
@@ -2219,7 +2049,7 @@ Q4=function(e,r,carryUid,...)
     if j then
         j.AutoRotate = true
     end
-    u4()h.carryUid=nil h.isReturning = false h.delivering = false
+    u4()h.isReturning = false h.delivering = false
     if h then
         h.onTreadmill = false
     end
@@ -3429,6 +3259,48 @@ N4=function(...)
     end
     return V
 end
+-- Robust drop/re-grab helper: use the game's visible "ทิ้ง"/Drop button once.
+local function RVX_DropHeldEggOnce()
+    local pg = o and o:FindFirstChild("PlayerGui")
+    if not pg then return false end
+    local clicked = false
+    local function tryButton(btn)
+        if clicked or not btn or not btn:IsA("GuiButton") or not btn.Visible then return end
+        local text = ""
+        pcall(function() text = tostring(btn.Text or "") end)
+        local name = tostring(btn.Name or "")
+        local key = string.lower(text .. " " .. name)
+        if not (string.find(key, "ทิ้ง", 1, true) or string.find(key, "drop", 1, true) or string.find(key, "discard", 1, true)) then
+            return
+        end
+        clicked = true
+        pcall(function()
+            if typeof(firesignal) == "function" and btn.Activated then
+                firesignal(btn.Activated)
+            elseif typeof(firesignal) == "function" and btn.MouseButton1Click then
+                firesignal(btn.MouseButton1Click)
+            elseif typeof(getconnections) == "function" and btn.MouseButton1Click then
+                for _, conn in ipairs(getconnections(btn.MouseButton1Click)) do
+                    pcall(function() conn:Fire() end)
+                    break
+                end
+            end
+        end)
+    end
+    pcall(function()
+        for _, gui in ipairs(pg:GetChildren()) do
+            if gui:IsA("ScreenGui") and gui.Enabled then
+                for _, obj in ipairs(gui:GetDescendants()) do
+                    tryButton(obj)
+                    if clicked then break end
+                end
+            end
+            if clicked then break end
+        end
+    end)
+    return clicked
+end
+
 U4=function(e,u,w,j,...)
     local k=o.Character
     local a=k and k:FindFirstChild( "HumanoidRootPart" )
@@ -3436,7 +3308,7 @@ U4=function(e,u,w,j,...)
     if not a or not V then
         return false
     end
-    h.securingEgg = true h.isReturning = false h.stateTime =os.clock ()h.holdingEggForGuard = true h.dropRegrabDone = false h.carryUid=nil
+    h.securingEgg = true h.isReturning = false h.stateTime =os.clock ()h.holdingEggForGuard = true
     local s=u.Position V4(s, 14 )h.currentTargetModel =w h.targetPosition =s a.AssemblyLinearVelocity =Vector3.zero a.AssemblyAngularVelocity =Vector3.zero Z4(k)pcall(function(...) o:RequestStreamAroundAsync(s)
     end
     )
@@ -3498,25 +3370,61 @@ U4=function(e,u,w,j,...)
         if e then
             X4[e]=os.clock ()+ 2
         end
-        h.currentTargetModel =nil h.targetPosition =nil h.securingEgg = false h.holdingEggForGuard = false h.carryUid=nil
+        h.currentTargetModel =nil h.targetPosition =nil h.securingEgg = false h.holdingEggForGuard = false
         return false
     end
 
-    -- New fast path: pick once, Drop once, pick again, then return immediately.
-    -- If this game's Drop button is unavailable, the original GuardStrike path remains as fallback.
-    if h.dropRegrabEnabled and not h.dropRegrabDone then
-        local stabilized=stabilizeEggWithDrop(e,u,w,j)
-        if stabilized then
-            h.dropRegrabDone=true
-            h.securingEgg=false
-            h.holdingEggForGuard=false
-            h.currentTargetModel=nil
-            h.targetPosition=nil
-            h.carryUid=e
+    -- Anti-take sequence: pickup once -> press the game's Drop button -> re-grab.
+    -- If the Drop button is unavailable, keep the original GuardStrike path as fallback.
+    h.statusText = "[2/4] Dropping once -> Re-grabbing..."
+    local dropped = false
+    local dropDeadline = os.clock() + 0.8
+    while os.clock() < dropDeadline and h.alive and h.securingEgg do
+        if RVX_DropHeldEggOnce() then
+            dropped = true
+            break
+        end
+        y.Heartbeat:Wait()
+    end
+
+    if dropped then
+        -- Wait for the first carry state to clear, then immediately pick the same UID again.
+        local releaseDeadline = os.clock() + 1.25
+        while w4() and os.clock() < releaseDeadline and h.alive and h.securingEgg do
+            y.Heartbeat:Wait()
+        end
+        h.statusText = "[3/4] Re-grabbing Egg..."
+        local regrabDeadline = os.clock() + 3
+        while not w4() and os.clock() < regrabDeadline and h.alive and h.securingEgg do
+            if j and O4~=j then break end
+            if not h.pureTweenFarm and(not h.autoFarmLoop and not h.teleporting )then break end
+            k:PivotTo(u*CFrame.new(0,0.4,0))
+            d4(w,s)
+            if e and i then
+                task.spawn(function() pcall(function()
+                    if i:IsA("RemoteFunction") then
+                        i:InvokeServer({["Uid"] = e})
+                        i:InvokeServer(e)
+                    else
+                        i:FireServer({["Uid"] = e})
+                        i:FireServer(e)
+                    end
+                end) end)
+            end
+            y.Heartbeat:Wait()
+        end
+        local R=j4(e)
+        if not R then task.wait(0.12) R=j4(e) end
+        h.currentTargetModel=nil h.targetPosition=nil h.securingEgg=false h.holdingEggForGuard=false
+        if j and O4~=j then return false end
+        if R then
+            h.statusText = "[4/4] Egg secured! Returning immediately..."
             return true
         end
-        h.dropRegrabDone=false
-        h.carryUid=nil
+        if e then X4[e]=os.clock()+2 end
+        t("[-] Drop/Re-grab failed; skipping this egg safely")
+        h.statusText = "[-] Re-grab failed"
+        return false
     end
 
     h.statusText = "[2/4] Waiting for Guard Strike..." H( "[GuardStrike] Step 2: Egg lifted! Triggering guard strike..." )
@@ -3580,8 +3488,7 @@ U4=function(e,u,w,j,...)
         return false
     end
     if R then
-        h.carryUid=e
-        H( "[GuardStrike] Egg successfully secured after guard strike! Keeping egg equipped for return." )h.statusText = "Egg Secured! Tweening along Z=-360..."
+        pcall(u4)H( "[GuardStrike] Egg successfully secured after guard strike! Stashed in backpack." )h.statusText = "Egg Secured! Tweening along Z=-360..."
     else
         t( "[-] Failed to re-grab egg after guard strike (stolen or despawned)" )h.statusText = "[-] Failed to re-grab egg"
         if e then
@@ -3876,8 +3783,6 @@ local Ck=os.clock ()task.spawn (function(...)
                                     return
                                 end
                                 if r then
-                                    h.isReturning=true
-                                    h.carryUid=h.carryUid or w.Uid
                                     pcall(function(...)
                                         if _G.NAP_OnEggStolen then
                                             _G.NAP_OnEggStolen({
@@ -3890,7 +3795,7 @@ local Ck=os.clock ()task.spawn (function(...)
                                         end
                                     end)
                                     if h.autoGlide then
-                                        h.statusText = "[AutoSteal] Secured! Tweening to Safe Line X=525..." H( "[AutoSteal] Egg secured after Guard Strike! Returning smoothly to Safe Line X=525 along Z=-360..." )Q4(h.glideSpeed ,u,w.Uid)
+                                        h.statusText = "[AutoSteal] Secured! Tweening to Safe Line X=525..." H( "[AutoSteal] Egg secured after Guard Strike! Returning smoothly to Safe Line X=525 along Z=-360..." )Q4(h.glideSpeed ,u)pcall(u4)
                                         local r=y4()h.statusText =string.format ( "Stashed in Bag (%d Eggs). Next steal..." ,r)H(string.format ( "[AutoSteal] Egg stashed in bag (%d total eggs). Hands-Free ready for next steal..." ,r))
                                     else
                                         h.statusText = "[AutoSteal] Secured! (Auto Return is OFF)" H( "[AutoSteal] Egg secured! Staying at target (Auto Return is OFF)." )
@@ -3956,10 +3861,9 @@ local qk=os.clock ()task.spawn (function(...)
                                 return
                             end
                             if w then
-                                h.isReturning=true
-                                h.carryUid=h.carryUid or y.Uid
+                                pcall(u4)
                                 if h.autoGlide then
-                                    h.statusText = "[SnipeLoop] Target secured! Tweening to Safe Line X=525..." Q4(h.glideSpeed ,r,y.Uid)
+                                    h.statusText = "[SnipeLoop] Target secured! Tweening to Safe Line X=525..." Q4(h.glideSpeed ,r)pcall(u4)
                                     local y=y4()h.statusText =string.format ( "Stashed in Bag (%d Eggs). Next snipe..." ,y)H(string.format ( "[SnipeLoop] Egg stashed in bag (%d total eggs). Hands-Free ready for next snipe..." ,y))
                                 else
                                     h.statusText = "[SnipeLoop] Target secured! (Auto Return is OFF)" H( "[SnipeLoop] Snipe successful! Staying at target (Auto Return is OFF)." )
@@ -4243,7 +4147,7 @@ y.Heartbeat :Connect(function(...)
         r.CFrame =CFrame.new (u.X , 72 ,u.Z )r.AssemblyLinearVelocity =Vector3.zero
         return
     end
-    if((h.pureTweenFarm or h.autoFarmLoop ))and not h.holdingEggForGuard and not h.isReturning and not h.carryUid then
+    if((h.pureTweenFarm or h.autoFarmLoop ))and not h.holdingEggForGuard then
         local r= false
         for e,y in ipairs(e:GetChildren())do
             if y:IsA( "Tool" )then
@@ -4259,7 +4163,7 @@ y.Heartbeat :Connect(function(...)
         return
     end
     if h.alive and(h.autoGlide and(w and(not a4()and u.X >E)))then
-        task.spawn (function(...) Q4(h.glideSpeed ,nil,h.carryUid)h.isReturning = false h.delivering = false
+        task.spawn (function(...) Q4(h.glideSpeed )u4()h.isReturning = false h.delivering = false
         end
         )
     end
