@@ -429,7 +429,7 @@ function Core.Server(Window, WindUI)
             end
         end)
     end)
-end
+
 
     -- ===== Anti-AFK =====
     -- อยู่ในแท็บ Server เพราะเป็นระบบที่เกี่ยวกับการคงสถานะการเชื่อมต่อ
@@ -497,6 +497,7 @@ end
         StartAntiAFK()
     end
 end
+
 
 function Core.Settings(Window, WindUI)
     local GlobalStore = (type(getgenv) == "function" and getgenv()) or _G
