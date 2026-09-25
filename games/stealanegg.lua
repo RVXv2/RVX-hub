@@ -1976,7 +1976,7 @@ Q4=function(e,r,...)
         j.AutoRotate = false
     end
     local k=h.laneZ or L
-    local a=Vector3.new (E- 10 , 70 ,k)e=math.max ( 100 ,e or h.glideSpeed or 350 )h.isReturning = true h.stateTime =os.clock ()V4(Vector3.new (E, 70 ,k), 20 )w.AssemblyLinearVelocity =Vector3.zero w.AssemblyAngularVelocity =Vector3.zero
+    local a=Vector3.new (E- 10 , 70 ,k)e=math.max ( 100 ,e or h.glideSpeed or 350 )h.isReturning = true h.stateTime =os.clock ()V4(Vector3.new (E, 70 ,k), 20 )pcall(u4)w.AssemblyLinearVelocity =Vector3.zero w.AssemblyAngularVelocity =Vector3.zero
     local V=o4()
     local H=math.max (e,V)
     local s=os.clock ()+ 15
@@ -2002,6 +2002,14 @@ Q4=function(e,r,...)
         if e.X <=(E+ 10 )or o<= 6 then
             u4()
             break
+        end
+        if u then
+            for e,r in ipairs(u:GetChildren())do
+                if r:IsA( "Tool" )then
+                    pcall(u4)
+                    break
+                end
+            end
         end
         local V=y.Heartbeat :Wait()e=w.Position
         local s=H
@@ -3259,48 +3267,6 @@ N4=function(...)
     end
     return V
 end
--- Robust drop/re-grab helper: use the game's visible "ทิ้ง"/Drop button once.
-local function RVX_DropHeldEggOnce()
-    local pg = o and o:FindFirstChild("PlayerGui")
-    if not pg then return false end
-    local clicked = false
-    local function tryButton(btn)
-        if clicked or not btn or not btn:IsA("GuiButton") or not btn.Visible then return end
-        local text = ""
-        pcall(function() text = tostring(btn.Text or "") end)
-        local name = tostring(btn.Name or "")
-        local key = string.lower(text .. " " .. name)
-        if not (string.find(key, "ทิ้ง", 1, true) or string.find(key, "drop", 1, true) or string.find(key, "discard", 1, true)) then
-            return
-        end
-        clicked = true
-        pcall(function()
-            if typeof(firesignal) == "function" and btn.Activated then
-                firesignal(btn.Activated)
-            elseif typeof(firesignal) == "function" and btn.MouseButton1Click then
-                firesignal(btn.MouseButton1Click)
-            elseif typeof(getconnections) == "function" and btn.MouseButton1Click then
-                for _, conn in ipairs(getconnections(btn.MouseButton1Click)) do
-                    pcall(function() conn:Fire() end)
-                    break
-                end
-            end
-        end)
-    end
-    pcall(function()
-        for _, gui in ipairs(pg:GetChildren()) do
-            if gui:IsA("ScreenGui") and gui.Enabled then
-                for _, obj in ipairs(gui:GetDescendants()) do
-                    tryButton(obj)
-                    if clicked then break end
-                end
-            end
-            if clicked then break end
-        end
-    end)
-    return clicked
-end
-
 U4=function(e,u,w,j,...)
     local k=o.Character
     local a=k and k:FindFirstChild( "HumanoidRootPart" )
@@ -3373,60 +3339,6 @@ U4=function(e,u,w,j,...)
         h.currentTargetModel =nil h.targetPosition =nil h.securingEgg = false h.holdingEggForGuard = false
         return false
     end
-
-    -- Anti-take sequence: pickup once -> press the game's Drop button -> re-grab.
-    -- If the Drop button is unavailable, keep the original GuardStrike path as fallback.
-    h.statusText = "[2/4] Dropping once -> Re-grabbing..."
-    local dropped = false
-    local dropDeadline = os.clock() + 0.8
-    while os.clock() < dropDeadline and h.alive and h.securingEgg do
-        if RVX_DropHeldEggOnce() then
-            dropped = true
-            break
-        end
-        y.Heartbeat:Wait()
-    end
-
-    if dropped then
-        -- Wait for the first carry state to clear, then immediately pick the same UID again.
-        local releaseDeadline = os.clock() + 1.25
-        while w4() and os.clock() < releaseDeadline and h.alive and h.securingEgg do
-            y.Heartbeat:Wait()
-        end
-        h.statusText = "[3/4] Re-grabbing Egg..."
-        local regrabDeadline = os.clock() + 3
-        while not w4() and os.clock() < regrabDeadline and h.alive and h.securingEgg do
-            if j and O4~=j then break end
-            if not h.pureTweenFarm and(not h.autoFarmLoop and not h.teleporting )then break end
-            k:PivotTo(u*CFrame.new(0,0.4,0))
-            d4(w,s)
-            if e and i then
-                task.spawn(function() pcall(function()
-                    if i:IsA("RemoteFunction") then
-                        i:InvokeServer({["Uid"] = e})
-                        i:InvokeServer(e)
-                    else
-                        i:FireServer({["Uid"] = e})
-                        i:FireServer(e)
-                    end
-                end) end)
-            end
-            y.Heartbeat:Wait()
-        end
-        local R=j4(e)
-        if not R then task.wait(0.12) R=j4(e) end
-        h.currentTargetModel=nil h.targetPosition=nil h.securingEgg=false h.holdingEggForGuard=false
-        if j and O4~=j then return false end
-        if R then
-            h.statusText = "[4/4] Egg secured! Returning immediately..."
-            return true
-        end
-        if e then X4[e]=os.clock()+2 end
-        t("[-] Drop/Re-grab failed; skipping this egg safely")
-        h.statusText = "[-] Re-grab failed"
-        return false
-    end
-
     h.statusText = "[2/4] Waiting for Guard Strike..." H( "[GuardStrike] Step 2: Egg lifted! Triggering guard strike..." )
     local J=os.clock ()
     local K=J+ 4.5
@@ -3783,6 +3695,7 @@ local Ck=os.clock ()task.spawn (function(...)
                                     return
                                 end
                                 if r then
+                                    pcall(u4)
                                     pcall(function(...)
                                         if _G.NAP_OnEggStolen then
                                             _G.NAP_OnEggStolen({
