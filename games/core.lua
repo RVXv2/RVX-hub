@@ -513,11 +513,12 @@ function Core.Settings(Window, WindUI)
     end
     GlobalStore.__RVXHub_Instance.SettingsPending = true
 
-    task.defer(function()
+    do
         if GlobalStore.__RVXHub_Instance.SettingsTab then return end
 
         local T = LANG[Core.Config.Language] or LANG.TH
         local Players = game:GetService("Players")
+        local RunService = game:GetService("RunService")
         local SettingsTab = Window:Tab({ Title = T.settings, Icon = "settings" })
         GlobalStore.__RVXHub_Instance.SettingsTab = SettingsTab
     Core.RegisterLanguageRefresh(function(T2)
@@ -725,7 +726,7 @@ function Core.Settings(Window, WindUI)
     Core.RegisterLanguageRefresh(function(T2)
         pcall(function() statsToggle:SetTitle(T2.showStats) end)
     end)
-end)
+end
 end
 
 -- ===== สร้างแท็บ Universal ตามลำดับที่ต้องการ =====
