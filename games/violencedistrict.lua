@@ -134,8 +134,7 @@ function ViolenceDistrict.Init(Window, WindUI)
     local RVXWindow = Window
 
     -- RVX HUB tabs for Violence District
-    local MainTab = RVXWindow:Tab({ Title = "info", Icon = "info" })
-    local ESPTab = RVXWindow:Tab({ Title = "ESP", Icon = "eye" })
+        local ESPTab = RVXWindow:Tab({ Title = "ESP", Icon = "eye" })
     RVXWindow:Divider()
     local SurviveTab = RVXWindow:Tab({ Title = "Survive", Icon = "user-check" })
     local KillerTab = RVXWindow:Tab({ Title = "Killer", Icon = "skull" })
